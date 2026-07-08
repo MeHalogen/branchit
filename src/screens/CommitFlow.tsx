@@ -15,9 +15,25 @@ import {
   suggestType,
   validateSubject,
   type CommitDraft,
+  type CommitType,
 } from "../workflows/commit.js";
+
 import { useColor, useTheme } from "../app/theme-context.js";
 import { sanitizeForDisplay } from "../utils/format.js";
+
+export interface CommitConfig {
+  types: CommitType[];
+  scopes: string[];
+  maxSubjectLength: number;
+  requireScope: boolean;
+}
+
+const DEFAULT_COMMIT_CONFIG: CommitConfig = {
+  types: COMMIT_TYPES,
+  scopes: [],
+  maxSubjectLength: 72,
+  requireScope: false,
+};
 
 type Stage =
   | "files"
@@ -41,6 +57,8 @@ export function CommitFlow(props: {
   workingTree: WorkingTreeState;
   width: number;
   commandPreview: boolean;
+  /** Commit conventions (types/scopes/limits); defaults when omitted. */
+  commitConfig?: CommitConfig;
   /** Detected pre-commit checks (may be empty). */
   checks: CheckCommand[];
   /** Whether this repo is already trusted for exactly this command set. */
@@ -59,6 +77,8 @@ export function CommitFlow(props: {
   const color = useColor();
   const { glyphs } = useTheme();
   const { workingTree, width } = props;
+  const cfg = props.commitConfig ?? DEFAULT_COMMIT_CONFIG;
+  const TYPES = cfg.types.length > 0 ? cfg.types : COMMIT_TYPES;
 
   const files = useMemo(() => stageableFiles(workingTree), [workingTree]);
   const currentStaged = useMemo(
@@ -74,7 +94,7 @@ export function CommitFlow(props: {
 
   const suggestedTypeName = useMemo(() => suggestType(workingTree.staged), [workingTree.staged]);
   const [typeIdx, setTypeIdx] = useState(() => {
-    const i = COMMIT_TYPES.findIndex((t) => t.name === suggestedTypeName);
+    const i = TYPES.findIndex((t) => t.name === suggestedTypeName);
     return i >= 0 ? i : 0;
   });
   const inferredScope = useMemo(() => inferScope(workingTree.staged), [workingTree.staged]);
@@ -93,7 +113,7 @@ export function CommitFlow(props: {
   // live preview). Typing replaces it; an empty field on Enter accepts it.
   const effectiveScope = scopeTouched ? scope : inferredScope ?? "";
   const draft: CommitDraft = {
-    type: COMMIT_TYPES[typeIdx]!.name,
+    type: TYPES[typeIdx]!.name,
     scope: effectiveScope,
     breaking,
     subject,
@@ -102,7 +122,7 @@ export function CommitFlow(props: {
   const header =
     `${draft.type}${draft.scope ? `(${draft.scope})` : ""}${breaking ? "!" : ""}: ` +
     (subject || "…");
-  const subjectValidation = validateSubject(subject);
+  const subjectValidation = validateSubject(subject, cfg.maxSubjectLength);
 
   const reconcileAndAdvance = async () => {
     if (reconciling) return; // ignore re-entrant Enter while staging is applying
@@ -183,7 +203,7 @@ export function CommitFlow(props: {
     }
 
     if (stage === "type") {
-      if (key.downArrow || input === "j") setTypeIdx((i) => Math.min(i + 1, COMMIT_TYPES.length - 1));
+      if (key.downArrow || input === "j") setTypeIdx((i) => Math.min(i + 1, TYPES.length - 1));
       else if (key.upArrow || input === "k") setTypeIdx((i) => Math.max(i - 1, 0));
       else if (key.return) {
         setStage("scope");
@@ -193,6 +213,8 @@ export function CommitFlow(props: {
 
     if (stage === "scope") {
       if (key.return) {
+        // When config requires a scope, block advancing on an empty one.
+        if (cfg.requireScope && effectiveScope.trim() === "") return;
         // Accept the effective scope (typed value, or the inferred suggestion).
         setScope(effectiveScope);
         setScopeTouched(true);
@@ -279,17 +301,31 @@ export function CommitFlow(props: {
       ) : null}
 
       {stage === "type" ? (
-        <TypeStage typeIdx={typeIdx} suggested={suggestedTypeName} />
+        <TypeStage typeIdx={typeIdx} suggested={suggestedTypeName} types={TYPES} />
       ) : null}
 
       {stage === "scope" ? (
-        <Field
-          label="Scope"
-          value={scope}
-          placeholder={
-            inferredScope ? `${inferredScope} (suggested — enter to accept)` : "(optional)"
-          }
-        />
+        <Box flexDirection="column">
+          <Field
+            label="Scope"
+            value={scope}
+            placeholder={
+              inferredScope
+                ? `${inferredScope} (suggested — enter to accept)`
+                : cfg.requireScope
+                  ? "(required)"
+                  : "(optional)"
+            }
+          />
+          {cfg.scopes.length > 0 ? (
+            <Box marginTop={1}>
+              <Box width={12}>
+                <Text color={color("dim")}>configured</Text>
+              </Box>
+              <Text color={color("dim")}>{cfg.scopes.join("  ")}</Text>
+            </Box>
+          ) : null}
+        </Box>
       ) : null}
 
       {stage === "subject" ? (
@@ -540,11 +576,11 @@ function FilesStage(props: {
   );
 }
 
-function TypeStage(props: { typeIdx: number; suggested: string | null }) {
+function TypeStage(props: { typeIdx: number; suggested: string | null; types: CommitType[] }) {
   const color = useColor();
   return (
     <Box flexDirection="column" marginTop={1}>
-      {COMMIT_TYPES.map((t, i) => {
+      {props.types.map((t, i) => {
         const sel = i === props.typeIdx;
         const isSuggested = t.name === props.suggested;
         return (

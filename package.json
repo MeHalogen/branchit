@@ -2,6 +2,7 @@
   "name": "branchy",
   "version": "0.1.0",
   "description": "Git flow without the command flow. A fast, safe, keyboard-first TUI for everyday Git workflows.",
+  "license": "MIT",
   "type": "module",
   "bin": {
     "branchy": "./dist/cli.js"
@@ -24,6 +25,7 @@
     "execa": "^9.5.1",
     "ink": "^5.1.0",
     "react": "^18.3.1",
+    "smol-toml": "^1.7.0",
     "zod": "^3.24.1"
   },
   "devDependencies": {

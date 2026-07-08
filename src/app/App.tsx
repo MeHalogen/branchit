@@ -22,13 +22,12 @@ import type { WorkingTreeState } from "../git/models.js";
 import { gatherPrReadiness, type PrContext } from "../workflows/pr.js";
 import { PrReadiness } from "../screens/PrReadiness.js";
 import { openUrl } from "../utils/open-url.js";
-import { detectChecks, runChecks } from "../workflows/checks.js";
+import { detectChecks, runChecks, commandsFromStrings } from "../workflows/checks.js";
 import { isTrusted, trustRepo } from "../config/trust.js";
-import {
-  gatherSweepCandidates,
-  DEFAULT_PROTECTED,
-  type SweepCandidate,
-} from "../workflows/sweep.js";
+import { defaultConfig, type ResolvedConfig } from "../config/schema.js";
+import { markOnboarded } from "../config/state.js";
+import { Welcome } from "../screens/Welcome.js";
+import { gatherSweepCandidates, type SweepCandidate } from "../workflows/sweep.js";
 import { Sweeper } from "../screens/Sweeper.js";
 import { toastForError } from "./error-text.js";
 import { commandByShortcut, type CommandId } from "../keys/registry.js";
@@ -51,7 +50,8 @@ type View =
   | "help"
   | "sweeper"
   | "commit"
-  | "pr";
+  | "pr"
+  | "welcome";
 
 interface ModalState {
   title: string;
@@ -84,15 +84,20 @@ export function App(props: {
   git: GitRepository;
   initial: RepoData;
   commandPreview: boolean;
+  /** Resolved config; defaults are used when omitted (e.g. in tests). */
+  config?: ResolvedConfig;
+  /** Show the one-time welcome screen before the dashboard. */
+  firstRun?: boolean;
 }) {
   const { git } = props;
+  const config = props.config ?? defaultConfig();
   const { exit } = useApp();
   const { stdout } = useStdout();
   const color = useColor();
   const width = Math.min(100, Math.max(50, (stdout?.columns ?? 80)));
 
   const [data, setData] = useState<RepoData>(props.initial);
-  const [view, setView] = useState<View>("dashboard");
+  const [view, setView] = useState<View>(props.firstRun ? "welcome" : "dashboard");
   const [modal, setModal] = useState<ModalState | null>(null);
   const [toast, setToast] = useState<ToastState | null>(null);
   const [busy, setBusy] = useState<string | null>(null);
@@ -100,9 +105,16 @@ export function App(props: {
   const [commitWt, setCommitWt] = useState<WorkingTreeState | null>(null);
   const [prCtx, setPrCtx] = useState<PrContext | null>(null);
 
-  // Pre-commit checks are detected once from the repo manifest (advisory only —
-  // never run without explicit trust).
-  const checks = useMemo(() => detectChecks(git.root), [git.root]);
+  // Pre-commit checks: explicit config commands take precedence; otherwise they
+  // are detected from the repo manifest. Advisory only — never run without
+  // explicit trust.
+  const checks = useMemo(
+    () =>
+      config.checks.commands
+        ? commandsFromStrings(config.checks.commands)
+        : detectChecks(git.root),
+    [config.checks.commands, git.root],
+  );
   const checkDisplays = useMemo(() => checks.map((c) => c.display), [checks]);
   const [checksTrusted, setChecksTrusted] = useState(() =>
     isTrusted(git.root, checkDisplays),
@@ -289,7 +301,7 @@ export function App(props: {
 
   // ── Sweeper ─────────────────────────────────────────────────────────────
   const openSweeper = useCallback(async () => {
-    const base = data.state.defaultBranch;
+    const base = config.branches.defaultBase ?? data.state.defaultBranch;
     if (!base) {
       notify({
         kind: "warning",
@@ -298,7 +310,7 @@ export function App(props: {
       return;
     }
     setBusy("Scanning branches…");
-    const protectedPatterns = [...DEFAULT_PROTECTED, baseLeaf(base)];
+    const protectedPatterns = [...config.branches.protected, baseLeaf(base)];
     const candidates = await gatherSweepCandidates(git.client, data.branches, {
       base,
       protectedPatterns,
@@ -307,7 +319,15 @@ export function App(props: {
     setBusy(null);
     setSweep({ base, candidates });
     setView("sweeper");
-  }, [data.branches, data.state.currentBranch, data.state.defaultBranch, git, notify]);
+  }, [
+    config.branches.defaultBase,
+    config.branches.protected,
+    data.branches,
+    data.state.currentBranch,
+    data.state.defaultBranch,
+    git,
+    notify,
+  ]);
 
   const runUndo = useCallback(
     async (outcomes: DeleteOutcome[]) => {
@@ -429,7 +449,7 @@ export function App(props: {
       notify({ kind: "warning", message: "Detached HEAD — check out a branch first" });
       return;
     }
-    const base = data.state.defaultBranch;
+    const base = config.branches.defaultBase ?? data.state.defaultBranch;
     if (!base) {
       notify({ kind: "warning", message: "Could not determine a base branch" });
       return;
@@ -440,7 +460,7 @@ export function App(props: {
     setBusy(null);
     setPrCtx(ctx);
     setView("pr");
-  }, [data.branches, data.state, git, notify]);
+  }, [config.branches.defaultBase, data.branches, data.state, git, notify]);
 
   const onPush = useCallback(async () => {
     const ctx = prCtx;
@@ -577,6 +597,16 @@ export function App(props: {
 
   return (
     <Box flexDirection="column" width={width}>
+      {view === "welcome" ? (
+        <Welcome
+          width={width}
+          onStart={() => {
+            markOnboarded();
+            setView("dashboard");
+          }}
+        />
+      ) : null}
+
       {view === "dashboard" ? <Dashboard data={data} width={width} /> : null}
 
       {view === "switcher" ? (
@@ -630,6 +660,7 @@ export function App(props: {
           workingTree={commitWt}
           width={width}
           commandPreview={props.commandPreview}
+          commitConfig={config.commit}
           checks={checks}
           isChecksTrusted={checksTrusted}
           onReconcileStaging={onReconcileStaging}

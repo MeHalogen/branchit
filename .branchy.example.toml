@@ -1,0 +1,42 @@
+# Branchy repository configuration (.branchy.toml)
+#
+# Copy to `.branchy.toml` and edit. Every field is optional; unspecified values
+# fall back to your user config (~/.config/branchy/config.toml) and then to
+# Branchy's built-in defaults. Run `branchy config` to see the resolved result.
+
+[ui]
+# Show the underlying git command before meaningful actions.
+command_preview = true
+# Use Unicode glyphs (false = ASCII fallback).
+icons = true
+# "default" = colored, "none" = no color.
+theme = "default"
+
+[branches]
+# Override base-branch detection for the sweeper and PR readiness.
+# default_base = "main"
+# Branches that must never be casually deleted. Supports exact names and
+# `prefix/*` globs.
+protected = ["main", "master", "develop", "release/*"]
+
+[commit]
+# Conventional commit types. Strings, or { name, description } tables.
+types = [
+  { name = "feat", description = "New user-facing capability" },
+  { name = "fix", description = "Bug fix" },
+  { name = "docs", description = "Documentation only" },
+  { name = "refactor", description = "Neither a feature nor a bug fix" },
+  { name = "test", description = "Adding or fixing tests" },
+  { name = "chore", description = "Maintenance / other" },
+]
+# Suggested scopes offered during the commit flow.
+scopes = ["cli", "git", "ui", "config"]
+max_subject_length = 72
+require_scope = false
+
+[checks]
+# Pre-commit checks. These run local programs, so Branchy requires you to
+# explicitly TRUST this repository for exactly this command set before running
+# them (and re-prompts if the set changes). Leave unset to auto-detect known
+# package.json scripts instead.
+# commands = ["npm run typecheck", "npm test"]

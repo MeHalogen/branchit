@@ -47,15 +47,23 @@ features are surfaced in-app as "(soon)" / "planned", never as working buttons.
   non-interactive `branchy switch <name>`, `branchy status [--plain]`, no-repo
   and non-TTY handling, no-color / ASCII modes, demo-repo generator.
 
-Tests: 102 passing (unit + real-git integration + TUI-driven, incl. real
+- **Config system** — layered TOML (`defaults → user → repo → CLI flags`),
+  validated with `zod` so a bad field yields `file:field — message` and is
+  skipped rather than crashing. Drives protected patterns, base branch, commit
+  types/scopes/limits/require-scope, check commands, and UI (preview/icons/
+  theme). `branchy config` shows the resolved result and sources.
+- **Polish + packaging:** one-screen first-run onboarding; MIT license; GitHub
+  Actions CI (typecheck + test + build on Linux/macOS × Node 20/22); annotated
+  `.branchy.example.toml`; Branchy dogfoods its own `.branchy.toml`.
+
+Tests: 112 passing (unit + real-git integration + TUI-driven, incl. real
 squash-merge detection, delete/undo round-trips, a real pre-commit hook failure
-being surfaced, a real push that sets an upstream, and the trust→run→commit
-checks flow end-to-end).
+being surfaced, a real push that sets an upstream, the trust→run→commit checks
+flow, config precedence/validation, and onboarding).
 
-## Planned (surfaced but not implemented)
+## Planned (not implemented)
 
-- **Config system** (`.branchy.toml`, `zod`) — user-defined check commands,
-  protected patterns, commit types/scopes, theme.
-- Diff viewer, sync strategies (pull merge/rebase), stash manager.
+- Diff viewer, sync strategies (pull merge/rebase), stash manager, reflog
+  recovery — see the roadmap in the README.
 
 See [architecture.md](architecture.md) for where these slot in.

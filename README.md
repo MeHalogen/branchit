@@ -75,6 +75,7 @@ Not in a TTY? Branchy stays useful:
 branchy status           # short human summary
 branchy status --plain   # key=value output for scripts
 branchy switch <branch>  # non-interactive switch
+branchy config           # show resolved configuration and its sources
 branchy doctor           # environment diagnostics (safe to paste in bug reports)
 ```
 
@@ -106,9 +107,35 @@ See [docs/git-safety.md](docs/git-safety.md).
 
 ## Configuration
 
-Planned: `~/.config/branchy/config.toml` (user) and `.branchy.toml` (repo) for
-themes, protected branches, commit types/scopes, and pre-commit checks with a
-repository trust model. See [docs/progress.md](docs/progress.md).
+Layered TOML config: **built-in defaults → `~/.config/branchy/config.toml`
+(user) → `.branchy.toml` (repo) → CLI flags**. Invalid files are reported with a
+precise `file:field — message` and skipped — never fatal. Run `branchy config`
+to see the resolved result and where each value came from.
+
+```toml
+# .branchy.toml
+[ui]
+command_preview = true
+theme = "default"          # or "none" for no color
+
+[branches]
+default_base = "main"      # override base detection
+protected = ["main", "release/*"]
+
+[commit]
+scopes = ["cli", "git", "ui"]
+max_subject_length = 72
+require_scope = false
+
+[checks]
+# Pre-commit checks. Repo-defined commands require explicit trust before they
+# run (Branchy re-prompts if the set changes). Omit to auto-detect npm scripts.
+commands = ["npm run typecheck", "npm test"]
+```
+
+See [`.branchy.example.toml`](.branchy.example.toml) for the fully annotated set
+of options, and [docs/git-safety.md](docs/git-safety.md) for the check trust
+model.
 
 ## Development
 
@@ -140,4 +167,5 @@ Tracked in [docs/progress.md](docs/progress.md).
 
 ## License
 
-License not yet selected; to be chosen by the project owner before publishing.
+[MIT](LICENSE) — the conventional default for a tool like this. Change it if the
+project owner prefers otherwise before publishing.

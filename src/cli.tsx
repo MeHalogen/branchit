@@ -9,6 +9,9 @@ import { ThemeProvider } from "./app/theme-context.js";
 import { resolveTheme } from "./theme/tokens.js";
 import { runDoctor } from "./commands/doctor.js";
 import { printPlainStatus } from "./commands/status.js";
+import { loadConfig, formatIssues } from "./config/load.js";
+import { printConfig } from "./commands/config.js";
+import { hasOnboarded } from "./config/state.js";
 
 const VERSION = "0.1.0";
 
@@ -36,6 +39,7 @@ Usage:
   branchy                 Launch the interactive TUI in the current repository
   branchy status          Print repository status (add --plain for scripts)
   branchy doctor          Diagnose the environment
+  branchy config          Show resolved configuration and its sources
   branchy switch <name>   Switch to a branch non-interactively
   branchy version         Print the version
 
@@ -102,6 +106,20 @@ async function main(): Promise<void> {
     return;
   }
 
+  // Resolve configuration (defaults ← user ← repo). Invalid files are reported
+  // but never fatal.
+  const loaded = loadConfig(git.root);
+  if (loaded.issues.length > 0) {
+    process.stderr.write("Branchy configuration problems:\n");
+    process.stderr.write(formatIssues(loaded.issues) + "\n");
+  }
+  const cfg = loaded.config;
+
+  if (command === "config") {
+    printConfig(loaded, git.root);
+    return;
+  }
+
   // Interactive TUI requires a TTY.
   if (!process.stdout.isTTY) {
     process.stderr.write(
@@ -112,14 +130,26 @@ async function main(): Promise<void> {
   }
 
   const data = await loadRepoData(git);
+  // CLI flags override config; config overrides built-in defaults.
   const themeValue = resolveTheme({
-    noColor: flags.has("no-color") || Boolean(process.env["NO_COLOR"]),
-    ascii: flags.has("ascii") || process.env["TERM"] === "dumb",
+    noColor:
+      flags.has("no-color") ||
+      Boolean(process.env["NO_COLOR"]) ||
+      cfg.ui.theme === "none",
+    ascii:
+      flags.has("ascii") || process.env["TERM"] === "dumb" || !cfg.ui.icons,
   });
+  const commandPreview = flags.has("no-preview") ? false : cfg.ui.commandPreview;
 
   const app = render(
     <ThemeProvider value={themeValue}>
-      <App git={git} initial={data} commandPreview={!flags.has("no-preview")} />
+      <App
+        git={git}
+        initial={data}
+        commandPreview={commandPreview}
+        config={cfg}
+        firstRun={!hasOnboarded()}
+      />
     </ThemeProvider>,
     { exitOnCtrlC: true },
   );

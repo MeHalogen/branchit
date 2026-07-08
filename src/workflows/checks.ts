@@ -73,6 +73,21 @@ export function detectChecks(root: string): CheckCommand[] {
 }
 
 /**
+ * Build checks from explicit config command strings (e.g. "pnpm lint"). Each is
+ * split on whitespace into argv — these are repo/user-defined and therefore
+ * always gated by the trust model before they run.
+ */
+export function commandsFromStrings(strings: string[]): CheckCommand[] {
+  return strings
+    .map((s) => s.trim())
+    .filter(Boolean)
+    .map((display) => {
+      const argv = display.split(/\s+/);
+      return { name: argv[0] ?? display, display, argv };
+    });
+}
+
+/**
  * Run checks sequentially, reporting progress after each state transition.
  * Stops early on the first failure (a failed check should block a commit). An
  * AbortSignal cancels the remaining checks and marks them cancelled.
