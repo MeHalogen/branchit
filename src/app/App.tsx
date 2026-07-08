@@ -1,4 +1,4 @@
-import React, { useCallback, useEffect, useState } from "react";
+import React, { useCallback, useEffect, useMemo, useState } from "react";
 import { Box, Text, useApp, useInput, useStdout } from "ink";
 import type { GitRepository } from "../git/repository.js";
 import type { Branch } from "../git/models.js";
@@ -22,6 +22,8 @@ import type { WorkingTreeState } from "../git/models.js";
 import { gatherPrReadiness, type PrContext } from "../workflows/pr.js";
 import { PrReadiness } from "../screens/PrReadiness.js";
 import { openUrl } from "../utils/open-url.js";
+import { detectChecks, runChecks } from "../workflows/checks.js";
+import { isTrusted, trustRepo } from "../config/trust.js";
 import {
   gatherSweepCandidates,
   DEFAULT_PROTECTED,
@@ -97,6 +99,14 @@ export function App(props: {
   const [sweep, setSweep] = useState<{ base: string; candidates: SweepCandidate[] } | null>(null);
   const [commitWt, setCommitWt] = useState<WorkingTreeState | null>(null);
   const [prCtx, setPrCtx] = useState<PrContext | null>(null);
+
+  // Pre-commit checks are detected once from the repo manifest (advisory only —
+  // never run without explicit trust).
+  const checks = useMemo(() => detectChecks(git.root), [git.root]);
+  const checkDisplays = useMemo(() => checks.map((c) => c.display), [checks]);
+  const [checksTrusted, setChecksTrusted] = useState(() =>
+    isTrusted(git.root, checkDisplays),
+  );
 
   // Auto-dismiss transient toasts (errors persist a little longer).
   useEffect(() => {
@@ -620,8 +630,17 @@ export function App(props: {
           workingTree={commitWt}
           width={width}
           commandPreview={props.commandPreview}
+          checks={checks}
+          isChecksTrusted={checksTrusted}
           onReconcileStaging={onReconcileStaging}
           onCommit={onCommit}
+          onPersistTrust={() => {
+            trustRepo(git.root, checkDisplays);
+            setChecksTrusted(true);
+          }}
+          onRunChecks={(onProgress, signal) =>
+            runChecks(git.root, checks, onProgress, signal)
+          }
           onDone={() => {
             setCommitWt(null);
             setView("dashboard");

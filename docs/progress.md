@@ -36,17 +36,26 @@ features are surfaced in-app as "(soon)" / "planned", never as working buttons.
   needed); host provider that parses SSH/HTTPS remotes into a compare/MR URL
   (GitHub full, GitLab best-effort); optional `gh` detection; open-in-browser.
   URL parsing, compare-URL building, and readiness are pure and unit-tested.
+- **Phase 6 — Pre-commit checks + repository trust model:** detects known
+  `package.json` scripts (advisory only); a repo must be explicitly trusted for
+  a specific command set before Branchy runs anything, and trust is re-prompted
+  when the set changes (hash-keyed store under the user config dir). Checks run
+  with argv + `shell:false`, report per-check status/duration, cancel on Esc,
+  and block the commit on first failure — with an explicit "commit anyway".
+  Git hooks still run on the actual commit.
 - **Extras that are real:** `n` new-branch flow, `f` fetch, `r` refresh,
   non-interactive `branchy switch <name>`, `branchy status [--plain]`, no-repo
   and non-TTY handling, no-color / ASCII modes, demo-repo generator.
 
-Tests: 88 passing (unit + real-git integration + TUI-driven, incl. real
+Tests: 102 passing (unit + real-git integration + TUI-driven, incl. real
 squash-merge detection, delete/undo round-trips, a real pre-commit hook failure
-being surfaced, and a real push that sets an upstream).
+being surfaced, a real push that sets an upstream, and the trust→run→commit
+checks flow end-to-end).
 
 ## Planned (surfaced but not implemented)
 
-- **Phase 6 — Pre-commit checks:** command detection + repository trust model.
-- **Config system** (`.branchy.toml`, `zod`), diff viewer, sync strategies.
+- **Config system** (`.branchy.toml`, `zod`) — user-defined check commands,
+  protected patterns, commit types/scopes, theme.
+- Diff viewer, sync strategies (pull merge/rebase), stash manager.
 
 See [architecture.md](architecture.md) for where these slot in.

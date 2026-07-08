@@ -57,12 +57,23 @@ explicitly-confirmed path. Every bulk delete records tips so it can be undone.
   base branch's leaf and `prefix/*` globs) are enforced by the sweeper: matching
   branches are shown but never selectable or deletable.
 
-## Repository trust (roadmap)
+## Repository trust (implemented)
 
-Repository-defined check commands (e.g. `.branchy.toml` `[checks]`) can execute
-arbitrary code. The design requires explicit, per-repository trust before first
-execution and re-prompting when the command set changes. This is documented here
-so the safety model and implementation stay aligned as it lands.
+Pre-commit check commands (detected from `package.json` scripts) can execute
+arbitrary code — a malicious repo could define `"lint": "rm -rf ~"`. Branchy
+therefore **never runs them automatically**:
+
+- Detection (`src/workflows/checks.ts`) only *suggests* commands; it never runs
+  them.
+- A repository must be **explicitly trusted** for a specific command set before
+  execution. Trust is stored hash-keyed by repo root under the user config dir
+  (`src/config/trust.ts`); if the command set later changes, the hash no longer
+  matches and Branchy **re-prompts**.
+- The trust prompt shows the exact commands and offers *run once* (no
+  persistence), *trust this repository*, *skip checks*, or *cancel*.
+- Checks execute with argv + `shell:false`, block the commit on first failure,
+  and can be cancelled. "Commit anyway" is a separate, explicit choice. Git's
+  own hooks still run on the real commit and are never bypassed.
 
 ## In-progress operations
 

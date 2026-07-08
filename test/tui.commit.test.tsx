@@ -19,6 +19,25 @@ const type = async (ui: { stdin: { write: (s: string) => void } }, s: string) =>
     await delay(8);
   }
 };
+/** Poll the last frame until it contains `needle`, or fail after `timeout`. */
+async function waitFor(
+  ui: { lastFrame: () => string | undefined },
+  needle: string,
+  timeout = 4000,
+) {
+  const start = Date.now();
+  while (Date.now() - start < timeout) {
+    if ((ui.lastFrame() ?? "").includes(needle)) {
+      // Let ink re-subscribe its input handler for the newly rendered stage
+      // before the caller sends the next keystroke (handlers re-register in a
+      // post-render effect, one tick after the frame commits).
+      await delay(50);
+      return;
+    }
+    await delay(20);
+  }
+  throw new Error(`Timed out waiting for "${needle}". Frame:\n${ui.lastFrame()}`);
+}
 
 async function setup(withStaged: boolean) {
   const repo = await createRepo({ initialBranch: "main" });
@@ -48,33 +67,30 @@ describe("Commit TUI flow", () => {
     await delay(60);
 
     ui.stdin.write("c"); // open commit
-    await delay(80);
-    expect(ui.lastFrame()).toContain("select files");
+    await waitFor(ui, "select files");
+    await delay(80); // let CommitFlow's input handler register before typing
 
     ui.stdin.write(" "); // include the untracked file
-    await delay(40);
+    await waitFor(ui, "1 file(s) will be committed");
     ui.stdin.write("\r"); // reconcile staging -> type stage
-    await delay(250);
-    expect(ui.lastFrame()).toContain("feat");
+    await waitFor(ui, "Commit  ·  type");
 
     ui.stdin.write("\r"); // choose feat -> scope
-    await delay(60);
     // Scope is inferred as "auth" from src/auth/…; accept it with Enter.
-    expect(ui.lastFrame()).toContain("suggested");
+    await waitFor(ui, "suggested");
     ui.stdin.write("\r"); // scope -> subject
-    await delay(60);
+    await waitFor(ui, "Commit  ·  subject");
     await type(ui, "add token module");
     ui.stdin.write("\r"); // subject -> body
-    await delay(60);
+    await waitFor(ui, "Commit  ·  body");
     ui.stdin.write("\r"); // skip body -> preview
-    await delay(60);
+    await waitFor(ui, "Commit  ·  preview");
     const preview = ui.lastFrame() ?? "";
     expect(preview).toContain("feat(auth): add token module");
     expect(preview).toContain("git commit -F -");
 
     ui.stdin.write("\r"); // commit
-    await delay(300);
-    expect(ui.lastFrame()).toContain("Committed");
+    await waitFor(ui, "Committed");
 
     const subject = await repo.git(["log", "-1", "--format=%s"]);
     expect(subject).toBe("feat(auth): add token module");

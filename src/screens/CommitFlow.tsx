@@ -1,7 +1,12 @@
-import React, { useMemo, useState } from "react";
+import React, { useMemo, useRef, useState } from "react";
 import { Box, Text, useInput } from "ink";
 import type { WorkingTreeState } from "../git/models.js";
 import type { CommitResult } from "../git/actions.js";
+import type {
+  CheckCommand,
+  CheckRunResult,
+  CheckState,
+} from "../workflows/checks.js";
 import {
   COMMIT_TYPES,
   buildCommitMessage,
@@ -21,6 +26,9 @@ type Stage =
   | "subject"
   | "body"
   | "preview"
+  | "checksTrust"
+  | "checks"
+  | "checksFailed"
   | "committing"
   | "result";
 
@@ -33,8 +41,19 @@ export function CommitFlow(props: {
   workingTree: WorkingTreeState;
   width: number;
   commandPreview: boolean;
+  /** Detected pre-commit checks (may be empty). */
+  checks: CheckCommand[];
+  /** Whether this repo is already trusted for exactly this command set. */
+  isChecksTrusted: boolean;
   onReconcileStaging: (toAdd: string[], toRemove: string[]) => Promise<void>;
   onCommit: (message: string) => Promise<CommitResult>;
+  /** Persist trust for the current check command set. */
+  onPersistTrust: () => void;
+  /** Run the checks, reporting progress; resolves with pass/fail. */
+  onRunChecks: (
+    onProgress: (states: CheckState[]) => void,
+    signal: AbortSignal,
+  ) => Promise<CheckRunResult>;
   onDone: () => void;
 }) {
   const color = useColor();
@@ -65,6 +84,10 @@ export function CommitFlow(props: {
   const [subject, setSubject] = useState("");
   const [body, setBody] = useState("");
   const [result, setResult] = useState<CommitResult | null>(null);
+  const [trusted, setTrusted] = useState(props.isChecksTrusted);
+  const [checkStates, setCheckStates] = useState<CheckState[]>([]);
+  const [reconciling, setReconciling] = useState(false);
+  const abortRef = useRef<AbortController | null>(null);
 
   // Until the user types a scope, the inferred scope is used (and shown in the
   // live preview). Typing replaces it; an empty field on Enter accepts it.
@@ -82,9 +105,12 @@ export function CommitFlow(props: {
   const subjectValidation = validateSubject(subject);
 
   const reconcileAndAdvance = async () => {
+    if (reconciling) return; // ignore re-entrant Enter while staging is applying
+    setReconciling(true);
     const toAdd = [...included].filter((p) => !currentStaged.has(p));
     const toRemove = [...currentStaged].filter((p) => !included.has(p));
     await props.onReconcileStaging(toAdd, toRemove);
+    setReconciling(false);
     setStage("type");
   };
 
@@ -95,9 +121,47 @@ export function CommitFlow(props: {
     setStage("result");
   };
 
+  // From the preview screen: run checks first if any are configured, obtaining
+  // trust when needed. Never runs repo-defined commands without trust.
+  const proceedFromPreview = () => {
+    if (props.checks.length === 0) {
+      void doCommit();
+    } else if (!trusted) {
+      setStage("checksTrust");
+    } else {
+      void startChecks();
+    }
+  };
+
+  const startChecks = async () => {
+    const controller = new AbortController();
+    abortRef.current = controller;
+    setCheckStates(props.checks.map((command) => ({ command, status: "waiting" })));
+    setStage("checks");
+    const outcome = await props.onRunChecks(setCheckStates, controller.signal);
+    abortRef.current = null;
+    if (controller.signal.aborted) {
+      setStage("preview");
+      return;
+    }
+    if (outcome.passed) void doCommit();
+    else setStage("checksFailed");
+  };
+
   useInput((input, key) => {
+    // Esc while checks are running cancels them and returns to the preview,
+    // rather than abandoning the whole flow.
+    if (key.escape && stage === "checks") {
+      abortRef.current?.abort();
+      return;
+    }
     // Global cancel (except while committing or on the result screen).
-    if (key.escape && stage !== "committing" && stage !== "result") {
+    if (
+      key.escape &&
+      stage !== "committing" &&
+      stage !== "result" &&
+      stage !== "checks"
+    ) {
       props.onDone();
       return;
     }
@@ -163,8 +227,26 @@ export function CommitFlow(props: {
     }
 
     if (stage === "preview") {
-      if (key.return) void doCommit();
+      if (key.return) proceedFromPreview();
       else if (input === "e") setStage("subject");
+      return;
+    }
+
+    if (stage === "checksTrust") {
+      if (key.return) void startChecks(); // run once, no persistence
+      else if (input === "t") {
+        props.onPersistTrust();
+        setTrusted(true);
+        void startChecks();
+      } else if (input === "s") void doCommit(); // skip checks (explicit)
+      // esc handled by the global cancel above -> back out of the flow
+      return;
+    }
+
+    if (stage === "checksFailed") {
+      if (input === "r") void startChecks();
+      else if (input === "c") void doCommit(); // commit anyway (explicit)
+      else if (key.return) setStage("preview");
       return;
     }
 
@@ -248,6 +330,14 @@ export function CommitFlow(props: {
         />
       ) : null}
 
+      {stage === "checksTrust" ? (
+        <TrustStage checks={props.checks} width={innerWidth} />
+      ) : null}
+
+      {stage === "checks" || stage === "checksFailed" ? (
+        <ChecksStage states={checkStates} failed={stage === "checksFailed"} width={innerWidth} />
+      ) : null}
+
       {stage === "committing" ? (
         <Box marginTop={1}>
           <Text color={color("primary")}>Committing…</Text>
@@ -271,6 +361,9 @@ function stageLabel(stage: Stage): string {
     subject: "subject",
     body: "body",
     preview: "preview",
+    checksTrust: "trust checks",
+    checks: "running checks",
+    checksFailed: "checks failed",
     committing: "committing",
     result: "done",
   }[stage];
@@ -290,11 +383,116 @@ function footerFor(stage: Stage, ok: boolean | undefined, breaking: boolean): st
       return "optional body   enter to preview   tab back   esc cancel";
     case "preview":
       return "enter commit   e edit   esc cancel";
+    case "checksTrust":
+      return "enter run once   t trust repo   s skip checks   esc cancel";
+    case "checks":
+      return "running checks…   esc cancel";
+    case "checksFailed":
+      return "r retry   c commit anyway   enter back   esc cancel";
     case "committing":
       return "";
     case "result":
       return ok ? "enter done" : "r retry   enter close";
   }
+}
+
+function TrustStage(props: { checks: CheckCommand[]; width: number }) {
+  const color = useColor();
+  const { glyphs } = useTheme();
+  return (
+    <Box flexDirection="column" marginTop={1}>
+      <Text color={color("warning")} bold>
+        {glyphs.warn} This repository wants to run pre-commit checks
+      </Text>
+      <Box flexDirection="column" marginTop={1}>
+        {props.checks.map((c) => (
+          <Text key={c.name} color={color("text")}>
+            {"  · "}
+            {c.display}
+          </Text>
+        ))}
+      </Box>
+      <Box marginTop={1}>
+        <Text color={color("dim")}>
+          These commands run local programs. Only trust repositories you
+          recognize.
+        </Text>
+      </Box>
+    </Box>
+  );
+}
+
+function ChecksStage(props: {
+  states: CheckState[];
+  failed: boolean;
+  width: number;
+}) {
+  const color = useColor();
+  const { glyphs } = useTheme();
+  const failing = props.states.find((s) => s.status === "failed");
+  return (
+    <Box flexDirection="column" marginTop={1}>
+      {props.states.map((s) => {
+        const g =
+          s.status === "passed"
+            ? glyphs.check
+            : s.status === "failed"
+              ? glyphs.cross
+              : s.status === "running"
+                ? glyphs.spinnerFrames[0]!
+                : s.status === "cancelled"
+                  ? "-"
+                  : "○";
+        const tone =
+          s.status === "passed"
+            ? "success"
+            : s.status === "failed"
+              ? "danger"
+              : s.status === "running"
+                ? "primary"
+                : "dim";
+        return (
+          <Box key={s.command.name}>
+            <Box width={2}>
+              <Text color={color(tone as never)}>{g}</Text>
+            </Box>
+            <Box width={22}>
+              <Text color={color("text")}>{s.command.display}</Text>
+            </Box>
+            <Text color={color("dim")}>
+              {s.status === "running"
+                ? "running…"
+                : s.durationMs !== undefined
+                  ? `${(s.durationMs / 1000).toFixed(1)}s`
+                  : s.status}
+            </Text>
+          </Box>
+        );
+      })}
+      {props.failed && failing ? (
+        <Box
+          flexDirection="column"
+          marginTop={1}
+          borderStyle="single"
+          borderColor={color("danger")}
+          paddingX={1}
+        >
+          <Text color={color("danger")} bold>
+            {failing.command.display} failed (exit {failing.exitCode})
+          </Text>
+          {(failing.output ?? "")
+            .split("\n")
+            .filter((l) => l.trim() !== "")
+            .slice(-6)
+            .map((l, i) => (
+              <Text key={i} color={color("dim")}>
+                {sanitizeForDisplay(l)}
+              </Text>
+            ))}
+        </Box>
+      ) : null}
+    </Box>
+  );
 }
 
 function FilesStage(props: {

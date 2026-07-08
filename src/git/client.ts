@@ -75,7 +75,7 @@ export class GitClient {
         stripFinalNewline: false,
         all: false,
         timeout: opts.timeoutMs,
-        signal: opts.signal,
+        cancelSignal: opts.signal,
         input: opts.input,
         // Force stable, English, non-paged output regardless of user env.
         env: {
