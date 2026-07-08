@@ -7,6 +7,8 @@ branches, create branches, fetch, and drive commits without command archaeology.
 Branchy shows you the underlying Git command before it runs, and treats
 destructive operations with care.
 
+![Branchy Demo](docs/demo.gif)
+
 ```
 ╭──────────────────────────────────────────────────────────────────────────╮
 │ branchy  payments-api                                          main ↑2    │
@@ -17,9 +19,9 @@ destructive operations with care.
  0 staged   1 modified   1 untracked
 
  Quick actions
- [b] Switch branch                     [c] Conventional commit (soon)
- [n] New branch                        [s] Sweep merged branches (soon)
- [f] Fetch remote                      [p] Prepare PR (soon)
+ [b] Switch branch                     [c] Conventional commit
+ [n] New branch                        [s] Sweep merged branches
+ [f] Fetch remote                      [p] Prepare PR
 
  Recent branches
  ● main                                                         ↑2  1s
@@ -32,8 +34,7 @@ destructive operations with care.
  b switch  n new  f fetch  c commit  s sweep  : commands  ? help  q quit
 ```
 
-> This is a **real rendered frame**, not a mockup. `(soon)` marks features that
-> are designed but not yet implemented — Branchy never shows a button that lies.
+> This is a **real rendered frame**, not a mockup.
 
 ## Why
 

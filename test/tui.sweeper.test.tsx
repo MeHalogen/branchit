@@ -14,6 +14,22 @@ afterEach(async () => {
 });
 const delay = (ms: number) => new Promise((r) => setTimeout(r, ms));
 
+async function waitFor(
+  ui: { lastFrame: () => string | undefined },
+  needle: string,
+  timeout = 4000,
+) {
+  const start = Date.now();
+  while (Date.now() - start < timeout) {
+    if ((ui.lastFrame() ?? "").includes(needle)) {
+      await delay(50);
+      return;
+    }
+    await delay(20);
+  }
+  throw new Error(`Timed out waiting for "${needle}". Frame:\n${ui.lastFrame()}`);
+}
+
 async function setup() {
   const repo = await createRepo({ initialBranch: "main" });
   repos.push(repo);
@@ -49,9 +65,8 @@ describe("Sweeper TUI flow", () => {
 
     // Open the sweeper (async scan).
     ui.stdin.write("s");
-    await delay(300);
+    await waitFor(ui, "Branch Sweeper");
     const frame = ui.lastFrame() ?? "";
-    expect(frame).toContain("Branch Sweeper");
     expect(frame).toContain("SAFE TO DELETE");
     expect(frame).toContain("feat/merged");
     // The unmerged branch must NOT be preselected.
@@ -59,22 +74,18 @@ describe("Sweeper TUI flow", () => {
 
     // Begin delete -> confirmation modal with command preview.
     ui.stdin.write("d");
-    await delay(80);
+    await waitFor(ui, "Delete 1 branch");
     const confirm = ui.lastFrame() ?? "";
-    expect(confirm).toContain("Delete 1 branch");
     expect(confirm).toContain("git branch -d feat/merged");
 
     // Confirm.
     ui.stdin.write("\r");
-    await delay(300);
+    await waitFor(ui, "Deleted 1 branch");
 
     const branches = await git.listBranches();
     expect(branches.find((b) => b.name === "feat/merged")).toBeUndefined();
     // Unmerged branch is untouched.
     expect(branches.find((b) => b.name === "experiment/unmerged")).toBeDefined();
-
-    // Result modal offers undo.
-    expect(ui.lastFrame()).toContain("Deleted 1 branch");
     ui.unmount();
   });
 
@@ -82,16 +93,15 @@ describe("Sweeper TUI flow", () => {
     const { git, ui } = await setup();
     await delay(60);
     ui.stdin.write("s");
-    await delay(300);
+    await waitFor(ui, "Branch Sweeper");
     ui.stdin.write("d");
-    await delay(80);
+    await waitFor(ui, "Delete 1 branch");
     ui.stdin.write("\r"); // confirm delete
-    await delay(300);
-    expect(ui.lastFrame()).toContain("Deleted 1 branch");
+    await waitFor(ui, "Deleted 1 branch");
 
     // Undo.
     ui.stdin.write("u");
-    await delay(300);
+    await waitFor(ui, "Restored 1 branch");
     const branches = await git.listBranches();
     expect(branches.find((b) => b.name === "feat/merged")).toBeDefined();
     ui.unmount();
