@@ -180,6 +180,14 @@ export const mutation = {
   stashPushIncludeUntracked(message: string): GitCommand {
     return cmd(["stash", "push", "--include-untracked", "--message", message]);
   },
+  /** Push the current branch to its existing upstream. */
+  push(): GitCommand {
+    return cmd(["push"]);
+  },
+  /** Push and set upstream to <remote>/<branch>. */
+  pushSetUpstream(remote: string, branch: string): GitCommand {
+    return cmd(["push", "--set-upstream", remote, branch]);
+  },
   /** Safe delete: refuses to remove unmerged branches. */
   safeDeleteBranch(name: string): GitCommand {
     return cmd(["branch", "--delete", "--", name]);

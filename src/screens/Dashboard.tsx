@@ -18,6 +18,7 @@ const IMPLEMENTED: ReadonlySet<string> = new Set([
   "dashboard.fetch",
   "dashboard.sweep",
   "dashboard.commit",
+  "dashboard.prepare",
   "global.refresh",
   "global.help",
   "global.quit",

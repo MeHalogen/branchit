@@ -16,9 +16,12 @@ import {
   type DeleteSpec,
   type DeleteOutcome,
 } from "../git/actions.js";
-import { fetchRemote } from "../git/sync.js";
+import { fetchRemote, pushCurrent } from "../git/sync.js";
 import { CommitFlow } from "../screens/CommitFlow.js";
 import type { WorkingTreeState } from "../git/models.js";
+import { gatherPrReadiness, type PrContext } from "../workflows/pr.js";
+import { PrReadiness } from "../screens/PrReadiness.js";
+import { openUrl } from "../utils/open-url.js";
 import {
   gatherSweepCandidates,
   DEFAULT_PROTECTED,
@@ -45,7 +48,8 @@ type View =
   | "palette"
   | "help"
   | "sweeper"
-  | "commit";
+  | "commit"
+  | "pr";
 
 interface ModalState {
   title: string;
@@ -62,6 +66,7 @@ const IMPLEMENTED_COMMANDS: ReadonlySet<CommandId> = new Set([
   "dashboard.fetch",
   "dashboard.sweep",
   "dashboard.commit",
+  "dashboard.prepare",
   "global.refresh",
   "global.help",
   "global.quit",
@@ -91,6 +96,7 @@ export function App(props: {
   const [busy, setBusy] = useState<string | null>(null);
   const [sweep, setSweep] = useState<{ base: string; candidates: SweepCandidate[] } | null>(null);
   const [commitWt, setCommitWt] = useState<WorkingTreeState | null>(null);
+  const [prCtx, setPrCtx] = useState<PrContext | null>(null);
 
   // Auto-dismiss transient toasts (errors persist a little longer).
   useEffect(() => {
@@ -407,6 +413,64 @@ export function App(props: {
     [git, reload],
   );
 
+  // ── PR readiness ──────────────────────────────────────────────────────────
+  const openPr = useCallback(async () => {
+    if (data.state.isDetached || !data.state.currentBranch) {
+      notify({ kind: "warning", message: "Detached HEAD — check out a branch first" });
+      return;
+    }
+    const base = data.state.defaultBranch;
+    if (!base) {
+      notify({ kind: "warning", message: "Could not determine a base branch" });
+      return;
+    }
+    const current = data.branches.find((b) => b.kind === "local" && b.isCurrent);
+    setBusy("Checking PR readiness…");
+    const ctx = await gatherPrReadiness(git.client, data.state, current?.upstream ?? null, base);
+    setBusy(null);
+    setPrCtx(ctx);
+    setView("pr");
+  }, [data.branches, data.state, git, notify]);
+
+  const onPush = useCallback(async () => {
+    const ctx = prCtx;
+    if (!ctx || !ctx.pushRemote) {
+      notify({ kind: "warning", message: "No remote to push to" });
+      return;
+    }
+    setBusy("Pushing…");
+    const res = await pushCurrent(git.client, {
+      hasUpstream: ctx.readiness.hasUpstream,
+      remote: ctx.pushRemote,
+      branch: ctx.readiness.head,
+    });
+    setBusy(null);
+    if (!res.ok) {
+      const t = toastForError(res.error);
+      notify({ kind: "error", message: t.message, detail: t.detail });
+      return;
+    }
+    notify({ kind: "success", message: `Pushed ${ctx.readiness.head}` });
+    // Re-gather so the checklist reflects the push.
+    const fresh = await reload();
+    const base = fresh.state.defaultBranch ?? ctx.readiness.base;
+    const current = fresh.branches.find((b) => b.kind === "local" && b.isCurrent);
+    const next = await gatherPrReadiness(git.client, fresh.state, current?.upstream ?? null, base);
+    setPrCtx(next);
+  }, [git, notify, prCtx, reload]);
+
+  const onOpenUrl = useCallback(
+    async (url: string) => {
+      const ok = await openUrl(url);
+      notify(
+        ok
+          ? { kind: "info", message: "Opened compare page in browser" }
+          : { kind: "warning", message: "Could not open a browser" },
+      );
+    },
+    [notify],
+  );
+
   const runCommand = useCallback(
     (id: CommandId) => {
       switch (id) {
@@ -424,6 +488,9 @@ export function App(props: {
           break;
         case "dashboard.commit":
           openCommit();
+          break;
+        case "dashboard.prepare":
+          void openPr();
           break;
         case "global.refresh":
           void reload().then(() =>
@@ -443,7 +510,7 @@ export function App(props: {
           });
       }
     },
-    [exit, notify, onFetch, openSweeper, openCommit, reload],
+    [exit, notify, onFetch, openSweeper, openCommit, openPr, reload],
   );
 
   const isAvailable = useCallback(
@@ -559,6 +626,20 @@ export function App(props: {
             setCommitWt(null);
             setView("dashboard");
             void reload();
+          }}
+        />
+      ) : null}
+
+      {view === "pr" && prCtx ? (
+        <PrReadiness
+          ctx={prCtx}
+          width={width}
+          commandPreview={props.commandPreview}
+          onPush={onPush}
+          onOpenUrl={onOpenUrl}
+          onClose={() => {
+            setPrCtx(null);
+            setView("dashboard");
           }}
         />
       ) : null}

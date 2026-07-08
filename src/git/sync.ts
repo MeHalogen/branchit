@@ -21,3 +21,21 @@ export async function fetchRemote(
   }
   return { ok: false, error: res.error!, commandDisplay: res.commandDisplay };
 }
+
+/**
+ * Push the current branch. When it has no upstream, sets one on `remote`.
+ * Returns the same typed ActionResult shape as other network actions.
+ */
+export async function pushCurrent(
+  client: GitClient,
+  opts: { hasUpstream: boolean; remote: string; branch: string },
+): Promise<ActionResult> {
+  const command = opts.hasUpstream
+    ? mutation.push()
+    : mutation.pushSetUpstream(opts.remote, opts.branch);
+  const res = await client.run(command);
+  if (res.ok) {
+    return { ok: true, commandDisplay: res.commandDisplay, durationMs: res.durationMs };
+  }
+  return { ok: false, error: res.error!, commandDisplay: res.commandDisplay };
+}

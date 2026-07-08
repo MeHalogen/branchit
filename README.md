@@ -88,9 +88,9 @@ branchy doctor           # environment diagnostics (safe to paste in bug reports
 | `r` | Refresh repository state | ✅ |
 | `s` | Sweep merged branches (classify, safe `-d` delete, **undo**) | ✅ |
 | `c` | Conventional commit (staging, type/scope/subject, hooks) | ✅ |
+| `p` | PR readiness (checklist, push, compare URL, `gh` detect) | ✅ |
 | `:` | Fuzzy command palette | ✅ |
 | `?` | Contextual help | ✅ |
-| `p` | Prepare PR | planned |
 
 ## Safety philosophy
 

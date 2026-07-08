@@ -31,18 +31,22 @@ features are surfaced in-app as "(soon)" / "planned", never as working buttons.
   breaking-change (`!`) toggle; optional body; full message preview; real commit
   via `git commit -F -` (Git hooks run — a failing hook is surfaced, not
   bypassed). Message building/inference/validation are pure and unit-tested.
+- **Phase 7 — PR readiness** (`p`): checklist from real branch state (clean tree,
+  ahead/behind base, upstream, unpushed commits); push (setting upstream when
+  needed); host provider that parses SSH/HTTPS remotes into a compare/MR URL
+  (GitHub full, GitLab best-effort); optional `gh` detection; open-in-browser.
+  URL parsing, compare-URL building, and readiness are pure and unit-tested.
 - **Extras that are real:** `n` new-branch flow, `f` fetch, `r` refresh,
   non-interactive `branchy switch <name>`, `branchy status [--plain]`, no-repo
   and non-TTY handling, no-color / ASCII modes, demo-repo generator.
 
-Tests: 73 passing (unit + real-git integration + TUI-driven, incl. real
-squash-merge detection, delete/undo round-trips, and a real pre-commit hook
-failure being surfaced).
+Tests: 88 passing (unit + real-git integration + TUI-driven, incl. real
+squash-merge detection, delete/undo round-trips, a real pre-commit hook failure
+being surfaced, and a real push that sets an upstream).
 
 ## Planned (surfaced but not implemented)
 
 - **Phase 6 — Pre-commit checks:** command detection + repository trust model.
-- **Phase 7 — PR readiness** (`p`) + optional GitHub CLI integration.
 - **Config system** (`.branchy.toml`, `zod`), diff viewer, sync strategies.
 
 See [architecture.md](architecture.md) for where these slot in.
