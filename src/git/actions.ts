@@ -29,6 +29,52 @@ export function switchBranch(client: GitClient, name: string): Promise<ActionRes
   return runMutation(client, mutation.switchBranch(name));
 }
 
+export function stagePaths(client: GitClient, paths: string[]): Promise<ActionResult> {
+  if (paths.length === 0)
+    return Promise.resolve({ ok: true, commandDisplay: "(noop)", durationMs: 0 });
+  return runMutation(client, mutation.addPaths(paths));
+}
+
+export function unstagePaths(client: GitClient, paths: string[]): Promise<ActionResult> {
+  if (paths.length === 0)
+    return Promise.resolve({ ok: true, commandDisplay: "(noop)", durationMs: 0 });
+  return runMutation(client, mutation.restoreStaged(paths));
+}
+
+export interface CommitResult {
+  ok: boolean;
+  /** Abbreviated hash of the new commit, when it could be resolved. */
+  shortSha?: string;
+  subject?: string;
+  error?: GitError;
+  /** Raw stderr, e.g. from a failing pre-commit hook. */
+  raw?: string;
+}
+
+/**
+ * Commit the staged index with `message` passed on stdin. Git hooks run
+ * normally; a failing hook surfaces as `ok: false` with raw output preserved.
+ */
+export async function commitChanges(
+  client: GitClient,
+  message: string,
+): Promise<CommitResult> {
+  const res = await client.run(mutation.commitFromStdin(), { input: message });
+  if (!res.ok) {
+    return { ok: false, error: res.error, raw: res.stderr || res.stdout };
+  }
+  // Resolve the new commit for the success screen.
+  const head = await client.run({
+    args: ["log", "-1", "--format=%h\x1f%s"],
+    display: "git log -1",
+  });
+  if (head.ok) {
+    const [shortSha, subject] = head.stdout.trim().split("\x1f");
+    return { ok: true, shortSha, subject };
+  }
+  return { ok: true };
+}
+
 export function switchTrackNew(
   client: GitClient,
   localName: string,

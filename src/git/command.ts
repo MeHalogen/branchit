@@ -161,6 +161,22 @@ export const mutation = {
     if (prune) args.push("--prune");
     return cmd(args);
   },
+  /** Stage paths (modifications, additions, and deletions). `--` guards names. */
+  addPaths(paths: string[]): GitCommand {
+    return cmd(["add", "--", ...paths]);
+  },
+  /** Unstage paths, leaving working-tree changes intact. */
+  restoreStaged(paths: string[]): GitCommand {
+    return cmd(["restore", "--staged", "--", ...paths]);
+  },
+  /**
+   * Commit the staged index using a message supplied on stdin (`-F -`). Passing
+   * the message via stdin avoids all argv escaping concerns and supports
+   * multi-line bodies/footers. Git hooks run normally.
+   */
+  commitFromStdin(): GitCommand {
+    return cmd(["commit", "-F", "-"]);
+  },
   stashPushIncludeUntracked(message: string): GitCommand {
     return cmd(["stash", "push", "--include-untracked", "--message", message]);
   },

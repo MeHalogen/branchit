@@ -10,10 +10,15 @@ import {
   stashBeforeSwitch,
   bulkDeleteBranches,
   recreateBranches,
+  stagePaths,
+  unstagePaths,
+  commitChanges,
   type DeleteSpec,
   type DeleteOutcome,
 } from "../git/actions.js";
 import { fetchRemote } from "../git/sync.js";
+import { CommitFlow } from "../screens/CommitFlow.js";
+import type { WorkingTreeState } from "../git/models.js";
 import {
   gatherSweepCandidates,
   DEFAULT_PROTECTED,
@@ -33,7 +38,14 @@ import { Toast, type ToastState } from "../components/Toast.js";
 import { useColor } from "./theme-context.js";
 import { sanitizeForDisplay } from "../utils/format.js";
 
-type View = "dashboard" | "switcher" | "newBranch" | "palette" | "help" | "sweeper";
+type View =
+  | "dashboard"
+  | "switcher"
+  | "newBranch"
+  | "palette"
+  | "help"
+  | "sweeper"
+  | "commit";
 
 interface ModalState {
   title: string;
@@ -49,6 +61,7 @@ const IMPLEMENTED_COMMANDS: ReadonlySet<CommandId> = new Set([
   "dashboard.newBranch",
   "dashboard.fetch",
   "dashboard.sweep",
+  "dashboard.commit",
   "global.refresh",
   "global.help",
   "global.quit",
@@ -77,6 +90,7 @@ export function App(props: {
   const [toast, setToast] = useState<ToastState | null>(null);
   const [busy, setBusy] = useState<string | null>(null);
   const [sweep, setSweep] = useState<{ base: string; candidates: SweepCandidate[] } | null>(null);
+  const [commitWt, setCommitWt] = useState<WorkingTreeState | null>(null);
 
   // Auto-dismiss transient toasts (errors persist a little longer).
   useEffect(() => {
@@ -363,6 +377,36 @@ export function App(props: {
     [performDelete],
   );
 
+  // ── Commit ──────────────────────────────────────────────────────────────
+  const openCommit = useCallback(() => {
+    const wt = data.status.workingTree;
+    if (wt.isClean) {
+      notify({ kind: "info", message: "Nothing to commit — working tree is clean" });
+      return;
+    }
+    setCommitWt(wt);
+    setView("commit");
+  }, [data.status.workingTree, notify]);
+
+  const onReconcileStaging = useCallback(
+    async (toAdd: string[], toRemove: string[]) => {
+      if (toRemove.length) await unstagePaths(git.client, toRemove);
+      if (toAdd.length) await stagePaths(git.client, toAdd);
+      const fresh = await reload();
+      setCommitWt(fresh.status.workingTree);
+    },
+    [git, reload],
+  );
+
+  const onCommit = useCallback(
+    async (message: string) => {
+      const res = await commitChanges(git.client, message);
+      if (res.ok) await reload();
+      return res;
+    },
+    [git, reload],
+  );
+
   const runCommand = useCallback(
     (id: CommandId) => {
       switch (id) {
@@ -377,6 +421,9 @@ export function App(props: {
           break;
         case "dashboard.sweep":
           void openSweeper();
+          break;
+        case "dashboard.commit":
+          openCommit();
           break;
         case "global.refresh":
           void reload().then(() =>
@@ -396,7 +443,7 @@ export function App(props: {
           });
       }
     },
-    [exit, notify, onFetch, openSweeper, reload],
+    [exit, notify, onFetch, openSweeper, openCommit, reload],
   );
 
   const isAvailable = useCallback(
@@ -497,6 +544,21 @@ export function App(props: {
           onClose={() => {
             setSweep(null);
             setView("dashboard");
+          }}
+        />
+      ) : null}
+
+      {view === "commit" && commitWt ? (
+        <CommitFlow
+          workingTree={commitWt}
+          width={width}
+          commandPreview={props.commandPreview}
+          onReconcileStaging={onReconcileStaging}
+          onCommit={onCommit}
+          onDone={() => {
+            setCommitWt(null);
+            setView("dashboard");
+            void reload();
           }}
         />
       ) : null}

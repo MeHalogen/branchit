@@ -87,9 +87,9 @@ branchy doctor           # environment diagnostics (safe to paste in bug reports
 | `f` | Fetch remote | ✅ |
 | `r` | Refresh repository state | ✅ |
 | `s` | Sweep merged branches (classify, safe `-d` delete, **undo**) | ✅ |
+| `c` | Conventional commit (staging, type/scope/subject, hooks) | ✅ |
 | `:` | Fuzzy command palette | ✅ |
 | `?` | Contextual help | ✅ |
-| `c` | Conventional commit | planned |
 | `p` | Prepare PR | planned |
 
 ## Safety philosophy

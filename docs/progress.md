@@ -24,17 +24,23 @@ features are surfaced in-app as "(soon)" / "planned", never as working buttons.
   patch-equivalence (`git cherry`); conservative preselection (only proven
   merged); safe `-d` vs explicit force `-D`; command-preview confirmation;
   honest partial-failure reporting; and **undo** (recreate at recorded tips).
+- **Phase 5 — Conventional commit** (`c`): inspects real working-tree state;
+  interactive staging (reconciled `add` / `restore --staged`) when nothing is
+  staged; type selection with deterministic suggestion (docs/test/build);
+  scope with directory inference; subject with non-blocking validation;
+  breaking-change (`!`) toggle; optional body; full message preview; real commit
+  via `git commit -F -` (Git hooks run — a failing hook is surfaced, not
+  bypassed). Message building/inference/validation are pure and unit-tested.
 - **Extras that are real:** `n` new-branch flow, `f` fetch, `r` refresh,
   non-interactive `branchy switch <name>`, `branchy status [--plain]`, no-repo
   and non-TTY handling, no-color / ASCII modes, demo-repo generator.
 
-Tests: 56 passing (unit + real-git integration + TUI-driven, incl. real
-squash-merge detection and delete/undo round-trips).
+Tests: 73 passing (unit + real-git integration + TUI-driven, incl. real
+squash-merge detection, delete/undo round-trips, and a real pre-commit hook
+failure being surfaced).
 
 ## Planned (surfaced but not implemented)
 
-- **Phase 5 — Conventional commit** (`c`): interactive staging, type/scope/
-  subject, preview, real commit.
 - **Phase 6 — Pre-commit checks:** command detection + repository trust model.
 - **Phase 7 — PR readiness** (`p`) + optional GitHub CLI integration.
 - **Config system** (`.branchy.toml`, `zod`), diff viewer, sync strategies.
