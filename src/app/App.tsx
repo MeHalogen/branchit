@@ -8,8 +8,18 @@ import {
   switchTrackNew,
   createBranch,
   stashBeforeSwitch,
+  bulkDeleteBranches,
+  recreateBranches,
+  type DeleteSpec,
+  type DeleteOutcome,
 } from "../git/actions.js";
 import { fetchRemote } from "../git/sync.js";
+import {
+  gatherSweepCandidates,
+  DEFAULT_PROTECTED,
+  type SweepCandidate,
+} from "../workflows/sweep.js";
+import { Sweeper } from "../screens/Sweeper.js";
 import { toastForError } from "./error-text.js";
 import { commandByShortcut, type CommandId } from "../keys/registry.js";
 import { Dashboard } from "../screens/Dashboard.js";
@@ -23,7 +33,7 @@ import { Toast, type ToastState } from "../components/Toast.js";
 import { useColor } from "./theme-context.js";
 import { sanitizeForDisplay } from "../utils/format.js";
 
-type View = "dashboard" | "switcher" | "newBranch" | "palette" | "help";
+type View = "dashboard" | "switcher" | "newBranch" | "palette" | "help" | "sweeper";
 
 interface ModalState {
   title: string;
@@ -38,10 +48,17 @@ const IMPLEMENTED_COMMANDS: ReadonlySet<CommandId> = new Set([
   "dashboard.switchBranch",
   "dashboard.newBranch",
   "dashboard.fetch",
+  "dashboard.sweep",
   "global.refresh",
   "global.help",
   "global.quit",
 ]);
+
+/** Local leaf name of a base ref, e.g. "origin/main" -> "main". */
+function baseLeaf(base: string): string {
+  const slash = base.lastIndexOf("/");
+  return slash === -1 ? base : base.slice(slash + 1);
+}
 
 export function App(props: {
   git: GitRepository;
@@ -59,6 +76,7 @@ export function App(props: {
   const [modal, setModal] = useState<ModalState | null>(null);
   const [toast, setToast] = useState<ToastState | null>(null);
   const [busy, setBusy] = useState<string | null>(null);
+  const [sweep, setSweep] = useState<{ base: string; candidates: SweepCandidate[] } | null>(null);
 
   // Auto-dismiss transient toasts (errors persist a little longer).
   useEffect(() => {
@@ -239,6 +257,112 @@ export function App(props: {
     [git, notify, reload],
   );
 
+  // ── Sweeper ─────────────────────────────────────────────────────────────
+  const openSweeper = useCallback(async () => {
+    const base = data.state.defaultBranch;
+    if (!base) {
+      notify({
+        kind: "warning",
+        message: "Could not determine a base branch to sweep against",
+      });
+      return;
+    }
+    setBusy("Scanning branches…");
+    const protectedPatterns = [...DEFAULT_PROTECTED, baseLeaf(base)];
+    const candidates = await gatherSweepCandidates(git.client, data.branches, {
+      base,
+      protectedPatterns,
+      currentBranch: data.state.currentBranch,
+    });
+    setBusy(null);
+    setSweep({ base, candidates });
+    setView("sweeper");
+  }, [data.branches, data.state.currentBranch, data.state.defaultBranch, git, notify]);
+
+  const runUndo = useCallback(
+    async (outcomes: DeleteOutcome[]) => {
+      setBusy("Restoring branches…");
+      const { restored, failed } = await recreateBranches(git.client, outcomes);
+      setBusy(null);
+      await reload();
+      if (failed.length === 0) {
+        notify({ kind: "success", message: `Restored ${restored.length} branch(es)` });
+      } else {
+        notify({
+          kind: "warning",
+          message: `Restored ${restored.length}, could not restore ${failed.length}`,
+        });
+      }
+    },
+    [git, notify, reload],
+  );
+
+  const performDelete = useCallback(
+    async (specs: DeleteSpec[]) => {
+      setBusy(`Deleting ${specs.length} branch(es)…`);
+      const outcomes = await bulkDeleteBranches(git.client, specs);
+      setBusy(null);
+      await reload();
+      const deleted = outcomes.filter((o) => o.ok);
+      const failed = outcomes.filter((o) => !o.ok);
+      setView("dashboard");
+      setSweep(null);
+
+      const lines: string[] = [];
+      if (deleted.length) lines.push(`Deleted: ${deleted.map((o) => o.name).join(", ")}`);
+      for (const f of failed)
+        lines.push(`Kept ${f.name} — ${f.error?.message ?? "could not delete"}`);
+
+      // Result modal offers undo for the branches that were actually deleted.
+      const canUndo = deleted.some((o) => o.restoreSha);
+      setModal({
+        title:
+          failed.length === 0
+            ? `Deleted ${deleted.length} branch(es)`
+            : `Deleted ${deleted.length}, kept ${failed.length}`,
+        lines: lines.length ? lines : ["No branches were deleted."],
+        danger: false,
+        actions: canUndo
+          ? [
+              { key: "u", label: "Undo", tone: "primary" },
+              { key: "enter", label: "Done" },
+            ]
+          : [{ key: "enter", label: "Done" }],
+        onAction: (key) => {
+          setModal(null);
+          if (key === "u") void runUndo(deleted);
+        },
+      });
+    },
+    [git, reload, runUndo],
+  );
+
+  const onSweepDelete = useCallback(
+    (specs: DeleteSpec[]) => {
+      const forceCount = specs.filter((s) => s.mode === "force").length;
+      const preview = specs.map(
+        (s) => `git branch -${s.mode === "safe" ? "d" : "D"} ${s.name}`,
+      );
+      setModal({
+        title: `Delete ${specs.length} branch(es)?`,
+        lines: [
+          ...specs.map((s) => `  ${s.mode === "force" ? "!" : "·"} ${s.name}`),
+          forceCount > 0
+            ? `${forceCount} use force delete (-D) — they are not fully merged.`
+            : "All use Git's safe -d (merged) deletion.",
+        ],
+        commandPreview: preview.slice(0, 8),
+        danger: forceCount > 0,
+        actions: [{ key: "enter", label: "Delete", tone: forceCount > 0 ? "danger" : "primary" }],
+        onAction: (key) => {
+          setModal(null);
+          if (key === "enter") void performDelete(specs);
+        },
+      });
+    },
+    [performDelete],
+  );
+
   const runCommand = useCallback(
     (id: CommandId) => {
       switch (id) {
@@ -250,6 +374,9 @@ export function App(props: {
           break;
         case "dashboard.fetch":
           void onFetch();
+          break;
+        case "dashboard.sweep":
+          void openSweeper();
           break;
         case "global.refresh":
           void reload().then(() =>
@@ -269,7 +396,7 @@ export function App(props: {
           });
       }
     },
-    [exit, notify, onFetch, reload],
+    [exit, notify, onFetch, openSweeper, reload],
   );
 
   const isAvailable = useCallback(
@@ -358,6 +485,19 @@ export function App(props: {
             runCommand(id);
           }}
           onClose={() => setView("dashboard")}
+        />
+      ) : null}
+
+      {view === "sweeper" && sweep ? (
+        <Sweeper
+          candidates={sweep.candidates}
+          base={sweep.base}
+          width={width}
+          onDelete={onSweepDelete}
+          onClose={() => {
+            setSweep(null);
+            setView("dashboard");
+          }}
         />
       ) : null}
 

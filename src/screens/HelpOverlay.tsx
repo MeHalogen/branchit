@@ -27,6 +27,7 @@ export function HelpOverlay(props: {
       : [
           ["b", "switch branch"],
           ["n", "new branch"],
+          ["s", "sweep merged branches"],
           ["f", "fetch remote"],
           ["r", "refresh"],
           [":", "command palette"],

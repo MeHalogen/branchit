@@ -37,9 +37,15 @@ screens passes through it.
 ## Merged detection
 
 "Merged" means the branch tip is **reachable from the base branch** per Git
-ancestry (`git branch --merged <base>` / `merge-base`), never a name or age
-heuristic. The help overlay explains this to the user. Squash-merge inference,
-where added, will be labelled with explicit confidence — never as certain.
+ancestry (`git branch --merged <base>`), never a name or age heuristic. The
+sweeper's classifier (`src/workflows/sweep.ts`) is pure and unit-tested; it
+gathers facts via bounded Git calls and emits a classification, confidence, and
+human-readable reasons per branch. Squash-merge is **inferred** from
+patch-equivalence (`git cherry` shows no `+` lines) on a non-ancestor branch and
+is labelled `squash_suspected` / confidence `likely` — never "merged". Only
+proven-merged, unprotected branches are preselected; safe deletion uses `-d`
+(which itself refuses unmerged branches), and force `-D` is a separate,
+explicitly-confirmed path. Every bulk delete records tips so it can be undone.
 
 ## Protected branches & worktrees
 
@@ -47,8 +53,9 @@ where added, will be labelled with explicit confidence — never as certain.
   casually switched-away-from or deleted. Worktree ownership is detected via
   `for-each-ref %(worktreepath)` and surfaced in the UI (see the worktree
   integration test).
-- Default protected patterns (`main`, `master`, `develop`, `trunk`) are reserved
-  for the sweeper's protection policy (roadmap) and resist deletion.
+- Default protected patterns (`main`, `master`, `develop`, `trunk`, plus the
+  base branch's leaf and `prefix/*` globs) are enforced by the sweeper: matching
+  branches are shown but never selectable or deletable.
 
 ## Repository trust (roadmap)
 

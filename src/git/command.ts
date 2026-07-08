@@ -114,6 +114,27 @@ export const query = {
     // Local branches whose tip is reachable from <base>.
     return cmd(["branch", "--merged", base, "--format=%(refname:short)"]);
   },
+  /** Count of commits on <branch> not reachable from <base> (base..branch). */
+  uniqueCommitCount(base: string, branch: string): GitCommand {
+    return cmd(["rev-list", "--count", `${base}..${branch}`]);
+  },
+  /**
+   * git cherry <base> <branch>: each line is "+ <sha>" (a commit whose patch is
+   * NOT present in base) or "- <sha>" (patch already present, e.g. via squash or
+   * cherry-pick). No "+" lines => every change is represented in base.
+   */
+  cherry(base: string, branch: string): GitCommand {
+    return cmd(["cherry", base, branch]);
+  },
+  /** Commits unique to <branch> vs <base>, for the unmerged inspection view. */
+  uniqueCommits(base: string, branch: string): GitCommand {
+    return cmd([
+      "log",
+      "--format=%h\x1f%s",
+      `${base}..${branch}`,
+      "--max-count=50",
+    ]);
+  },
   aheadBehind(base: string, tip: string): GitCommand {
     // Output: "<behind>\t<ahead>" (left = base..tip? see rev-list docs).
     return cmd(["rev-list", "--left-right", "--count", `${base}...${tip}`]);

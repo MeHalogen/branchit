@@ -18,18 +18,21 @@ features are surfaced in-app as "(soon)" / "planned", never as working buttons.
   arrow/Ctrl-n/p navigation, details panel, command preview; real switching;
   remote-only → tracking-branch creation; dirty-tree → explicit stash modal with
   honest partial-failure reporting; worktree/current-branch guards.
+- **Phase 4 — Stale branch sweeper** (`s`): pure classification engine
+  (safe-merged / squash-suspected / remote-gone / unmerged / protected) with
+  confidence + reasons, grounded in Git ancestry (`branch --merged`) and
+  patch-equivalence (`git cherry`); conservative preselection (only proven
+  merged); safe `-d` vs explicit force `-D`; command-preview confirmation;
+  honest partial-failure reporting; and **undo** (recreate at recorded tips).
 - **Extras that are real:** `n` new-branch flow, `f` fetch, `r` refresh,
   non-interactive `branchy switch <name>`, `branchy status [--plain]`, no-repo
   and non-TTY handling, no-color / ASCII modes, demo-repo generator.
 
-Tests: 42 passing (unit + real-git integration + TUI-driven).
+Tests: 56 passing (unit + real-git integration + TUI-driven, incl. real
+squash-merge detection and delete/undo round-trips).
 
 ## Planned (surfaced but not implemented)
 
-- **Phase 4 — Stale branch sweeper** (`s`): classification engine
-  (safe-merged / remote-gone / squash-suspected / unmerged / protected), base
-  selection, conservative selection, `-d` bulk delete with partial-failure and
-  undo.
 - **Phase 5 — Conventional commit** (`c`): interactive staging, type/scope/
   subject, preview, real commit.
 - **Phase 6 — Pre-commit checks:** command detection + repository trust model.

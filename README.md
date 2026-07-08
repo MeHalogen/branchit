@@ -86,10 +86,10 @@ branchy doctor           # environment diagnostics (safe to paste in bug reports
 | `n` | New branch (type + description → safe name) | ✅ |
 | `f` | Fetch remote | ✅ |
 | `r` | Refresh repository state | ✅ |
+| `s` | Sweep merged branches (classify, safe `-d` delete, **undo**) | ✅ |
 | `:` | Fuzzy command palette | ✅ |
 | `?` | Contextual help | ✅ |
 | `c` | Conventional commit | planned |
-| `s` | Sweep merged branches | planned |
 | `p` | Prepare PR | planned |
 
 ## Safety philosophy

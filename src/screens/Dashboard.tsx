@@ -16,6 +16,7 @@ const IMPLEMENTED: ReadonlySet<string> = new Set([
   "dashboard.switchBranch",
   "dashboard.newBranch",
   "dashboard.fetch",
+  "dashboard.sweep",
   "global.refresh",
   "global.help",
   "global.quit",
