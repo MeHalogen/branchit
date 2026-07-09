@@ -19,7 +19,8 @@
     "typecheck": "tsc --noEmit",
     "test": "vitest run",
     "test:watch": "vitest",
-    "demo:repo": "node --import tsx scripts/demo-repo.ts"
+    "demo:repo": "node --import tsx scripts/demo-repo.ts",
+    "prepublishOnly": "npm run typecheck && npm test && npm run build"
   },
   "dependencies": {
     "execa": "^9.5.1",
