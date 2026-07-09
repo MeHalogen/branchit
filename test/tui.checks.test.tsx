@@ -13,12 +13,12 @@ import { resolveTheme } from "../src/theme/tokens.js";
 
 const repos: TempRepo[] = [];
 const cfgDirs: string[] = [];
-const prevCfg = process.env["BRANCHY_CONFIG_DIR"];
+const prevCfg = process.env["BRANCHIT_CONFIG_DIR"];
 afterEach(async () => {
   await Promise.all(repos.splice(0).map((r) => r.cleanup()));
   await Promise.all(cfgDirs.splice(0).map((d) => rm(d, { recursive: true, force: true })));
-  if (prevCfg === undefined) delete process.env["BRANCHY_CONFIG_DIR"];
-  else process.env["BRANCHY_CONFIG_DIR"] = prevCfg;
+  if (prevCfg === undefined) delete process.env["BRANCHIT_CONFIG_DIR"];
+  else process.env["BRANCHIT_CONFIG_DIR"] = prevCfg;
 });
 const delay = (ms: number) => new Promise((r) => setTimeout(r, ms));
 const typeText = async (ui: { stdin: { write: (s: string) => void } }, s: string) => {
@@ -30,9 +30,9 @@ const typeText = async (ui: { stdin: { write: (s: string) => void } }, s: string
 
 async function setup(scriptBody: string, scriptName: string) {
   // Isolated, empty trust store so checks start untrusted.
-  const cfg = await mkdtemp(join(tmpdir(), "branchy-cfg-"));
+  const cfg = await mkdtemp(join(tmpdir(), "branchit-cfg-"));
   cfgDirs.push(cfg);
-  process.env["BRANCHY_CONFIG_DIR"] = cfg;
+  process.env["BRANCHIT_CONFIG_DIR"] = cfg;
 
   const repo = await createRepo({ initialBranch: "main" });
   repos.push(repo);

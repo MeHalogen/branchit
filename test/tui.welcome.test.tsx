@@ -13,19 +13,19 @@ import { resolveTheme } from "../src/theme/tokens.js";
 
 const repos: TempRepo[] = [];
 const cfgDirs: string[] = [];
-const prevCfg = process.env["BRANCHY_CONFIG_DIR"];
+const prevCfg = process.env["BRANCHIT_CONFIG_DIR"];
 afterEach(async () => {
   await Promise.all(repos.splice(0).map((r) => r.cleanup()));
   await Promise.all(cfgDirs.splice(0).map((d) => rm(d, { recursive: true, force: true })));
-  if (prevCfg === undefined) delete process.env["BRANCHY_CONFIG_DIR"];
-  else process.env["BRANCHY_CONFIG_DIR"] = prevCfg;
+  if (prevCfg === undefined) delete process.env["BRANCHIT_CONFIG_DIR"];
+  else process.env["BRANCHIT_CONFIG_DIR"] = prevCfg;
 });
 const delay = (ms: number) => new Promise((r) => setTimeout(r, ms));
 
 async function setup(firstRun: boolean) {
-  const cfg = await mkdtemp(join(tmpdir(), "branchy-cfg-"));
+  const cfg = await mkdtemp(join(tmpdir(), "branchit-cfg-"));
   cfgDirs.push(cfg);
-  process.env["BRANCHY_CONFIG_DIR"] = cfg; // isolate onboarding state writes
+  process.env["BRANCHIT_CONFIG_DIR"] = cfg; // isolate onboarding state writes
   const repo = await createRepo({ initialBranch: "main" });
   repos.push(repo);
   const detect = await detectRepository(repo.dir);
@@ -48,12 +48,12 @@ describe("Welcome onboarding", () => {
   it("shows the welcome screen on first run and enter starts the dashboard", async () => {
     const { ui } = await setup(true);
     await delay(50);
-    expect(ui.lastFrame()).toContain("Welcome to Branchy");
+    expect(ui.lastFrame()).toContain("Welcome to Branchit");
     ui.stdin.write("\r");
     await delay(50);
     const frame = ui.lastFrame() ?? "";
     expect(frame).toContain("Quick actions");
-    expect(frame).not.toContain("Welcome to Branchy");
+    expect(frame).not.toContain("Welcome to Branchit");
     ui.unmount();
   });
 
@@ -61,7 +61,7 @@ describe("Welcome onboarding", () => {
     const { ui } = await setup(false);
     await delay(50);
     expect(ui.lastFrame()).toContain("Quick actions");
-    expect(ui.lastFrame()).not.toContain("Welcome to Branchy");
+    expect(ui.lastFrame()).not.toContain("Welcome to Branchit");
     ui.unmount();
   });
 });

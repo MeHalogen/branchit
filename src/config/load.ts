@@ -1,9 +1,9 @@
 /**
- * Load and resolve Branchy configuration.
+ * Load and resolve Branchit configuration.
  *
- * Layers (low → high precedence): defaults → user config → repo `.branchy.toml`.
+ * Layers (low → high precedence): defaults → user config → repo `.branchit.toml`.
  * CLI flags are applied by the caller on top of the result. A malformed or
- * invalid file never crashes Branchy: its problems are collected as `issues`
+ * invalid file never crashes Branchit: its problems are collected as `issues`
  * (with file + field + message) and that layer is skipped, so the app still
  * runs on the remaining valid config.
  */
@@ -37,7 +37,7 @@ export function userConfigPath(): string {
 }
 
 export function repoConfigPath(root: string): string {
-  return join(root, ".branchy.toml");
+  return join(root, ".branchit.toml");
 }
 
 /** Parse + validate one file, folding it onto `base`. Records issues. */

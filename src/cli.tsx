@@ -33,15 +33,15 @@ function parseArgs(argv: string[]): ParsedArgs {
   return { command, flags, positional };
 }
 
-const HELP = `branchy — Git flow without the command flow.
+const HELP = `branchit — Git flow without the command flow.
 
 Usage:
-  branchy                 Launch the interactive TUI in the current repository
-  branchy status          Print repository status (add --plain for scripts)
-  branchy doctor          Diagnose the environment
-  branchy config          Show resolved configuration and its sources
-  branchy switch <name>   Switch to a branch non-interactively
-  branchy version         Print the version
+  branchit                 Launch the interactive TUI in the current repository
+  branchit status          Print repository status (add --plain for scripts)
+  branchit doctor          Diagnose the environment
+  branchit config          Show resolved configuration and its sources
+  branchit switch <name>   Switch to a branch non-interactively
+  branchit version         Print the version
 
 Options:
   --no-color              Disable color output
@@ -110,7 +110,7 @@ async function main(): Promise<void> {
   // but never fatal.
   const loaded = loadConfig(git.root);
   if (loaded.issues.length > 0) {
-    process.stderr.write("Branchy configuration problems:\n");
+    process.stderr.write("Branchit configuration problems:\n");
     process.stderr.write(formatIssues(loaded.issues) + "\n");
   }
   const cfg = loaded.config;
@@ -123,7 +123,7 @@ async function main(): Promise<void> {
   // Interactive TUI requires a TTY.
   if (!process.stdout.isTTY) {
     process.stderr.write(
-      "branchy is interactive and needs a TTY. Try `branchy status --plain`.\n",
+      "branchit is interactive and needs a TTY. Try `branchit status --plain`.\n",
     );
     process.exitCode = 1;
     return;
@@ -174,7 +174,7 @@ async function nonInteractiveSwitch(
   name: string | undefined,
 ): Promise<void> {
   if (!name) {
-    process.stderr.write("Usage: branchy switch <branch>\n");
+    process.stderr.write("Usage: branchit switch <branch>\n");
     process.exitCode = 1;
     return;
   }
@@ -192,9 +192,9 @@ main().catch((err) => {
   // Ink restores the terminal on unmount; for pre-render failures make sure we
   // exit cleanly with a readable message rather than a raw stack trace.
   process.stderr.write(
-    `branchy encountered an unexpected error: ${err instanceof Error ? err.message : String(err)}\n`,
+    `branchit encountered an unexpected error: ${err instanceof Error ? err.message : String(err)}\n`,
   );
-  if (process.env["BRANCHY_LOG"] === "debug" && err instanceof Error) {
+  if (process.env["BRANCHIT_LOG"] === "debug" && err instanceof Error) {
     process.stderr.write((err.stack ?? "") + "\n");
   }
   process.exitCode = 1;

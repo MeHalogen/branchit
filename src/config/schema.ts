@@ -1,7 +1,7 @@
 /**
- * Branchy configuration schema, defaults, and the resolved shape the app uses.
+ * Branchit configuration schema, defaults, and the resolved shape the app uses.
  *
- * Config is layered: built-in defaults < user config < repo `.branchy.toml` <
+ * Config is layered: built-in defaults < user config < repo `.branchit.toml` <
  * CLI flags. Files are validated with zod so a typo yields a precise
  * "file:field — message" error rather than silent misbehavior or a crash.
  */

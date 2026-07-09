@@ -5,15 +5,15 @@ import { join } from "node:path";
 import { hashCommands, isTrusted, trustRepo } from "../src/config/trust.js";
 
 let cfgDir: string;
-const prev = process.env["BRANCHY_CONFIG_DIR"];
+const prev = process.env["BRANCHIT_CONFIG_DIR"];
 
 beforeEach(async () => {
-  cfgDir = await mkdtemp(join(tmpdir(), "branchy-cfg-"));
-  process.env["BRANCHY_CONFIG_DIR"] = cfgDir;
+  cfgDir = await mkdtemp(join(tmpdir(), "branchit-cfg-"));
+  process.env["BRANCHIT_CONFIG_DIR"] = cfgDir;
 });
 afterEach(async () => {
-  if (prev === undefined) delete process.env["BRANCHY_CONFIG_DIR"];
-  else process.env["BRANCHY_CONFIG_DIR"] = prev;
+  if (prev === undefined) delete process.env["BRANCHIT_CONFIG_DIR"];
+  else process.env["BRANCHIT_CONFIG_DIR"] = prev;
   await rm(cfgDir, { recursive: true, force: true });
 });
 

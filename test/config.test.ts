@@ -7,16 +7,16 @@ import { defaultConfig, mergeConfig, ConfigFileSchema } from "../src/config/sche
 
 let cfgDir: string;
 let repoDir: string;
-const prev = process.env["BRANCHY_CONFIG_DIR"];
+const prev = process.env["BRANCHIT_CONFIG_DIR"];
 
 beforeEach(async () => {
-  cfgDir = await mkdtemp(join(tmpdir(), "branchy-ucfg-"));
-  repoDir = await mkdtemp(join(tmpdir(), "branchy-repo-"));
-  process.env["BRANCHY_CONFIG_DIR"] = cfgDir;
+  cfgDir = await mkdtemp(join(tmpdir(), "branchit-ucfg-"));
+  repoDir = await mkdtemp(join(tmpdir(), "branchit-repo-"));
+  process.env["BRANCHIT_CONFIG_DIR"] = cfgDir;
 });
 afterEach(async () => {
-  if (prev === undefined) delete process.env["BRANCHY_CONFIG_DIR"];
-  else process.env["BRANCHY_CONFIG_DIR"] = prev;
+  if (prev === undefined) delete process.env["BRANCHIT_CONFIG_DIR"];
+  else process.env["BRANCHIT_CONFIG_DIR"] = prev;
   await rm(cfgDir, { recursive: true, force: true });
   await rm(repoDir, { recursive: true, force: true });
 });
@@ -51,7 +51,7 @@ describe("loadConfig precedence", () => {
       '[ui]\ncommand_preview = false\n[branches]\nprotected = ["main"]\n',
     );
     await writeFile(
-      join(repoDir, ".branchy.toml"),
+      join(repoDir, ".branchit.toml"),
       '[branches]\nprotected = ["main","release/*"]\ndefault_base = "develop"\n',
     );
     const { config, sources } = loadConfig(repoDir);
@@ -63,7 +63,7 @@ describe("loadConfig precedence", () => {
 
   it("reads check commands from repo config", async () => {
     await writeFile(
-      join(repoDir, ".branchy.toml"),
+      join(repoDir, ".branchit.toml"),
       '[checks]\ncommands = ["pnpm lint", "pnpm test"]\n',
     );
     expect(loadConfig(repoDir).config.checks.commands).toEqual(["pnpm lint", "pnpm test"]);
@@ -72,7 +72,7 @@ describe("loadConfig precedence", () => {
 
 describe("validation", () => {
   it("reports a precise issue and skips an invalid layer without crashing", async () => {
-    await writeFile(join(repoDir, ".branchy.toml"), '[ui]\ntheme = "neon"\n');
+    await writeFile(join(repoDir, ".branchit.toml"), '[ui]\ntheme = "neon"\n');
     const { config, issues } = loadConfig(repoDir);
     expect(issues.length).toBeGreaterThan(0);
     expect(issues[0]!.field).toBe("ui.theme");
@@ -81,13 +81,13 @@ describe("validation", () => {
   });
 
   it("rejects unknown keys", async () => {
-    await writeFile(join(repoDir, ".branchy.toml"), '[ui]\nbogus = 1\n');
+    await writeFile(join(repoDir, ".branchit.toml"), '[ui]\nbogus = 1\n');
     const { issues } = loadConfig(repoDir);
     expect(issues.some((i) => i.message.toLowerCase().includes("unrecognized"))).toBe(true);
   });
 
   it("reports invalid TOML as a whole-file issue", async () => {
-    await writeFile(join(repoDir, ".branchy.toml"), "this is = = not valid toml\n");
+    await writeFile(join(repoDir, ".branchit.toml"), "this is = = not valid toml\n");
     const { issues } = loadConfig(repoDir);
     expect(issues.some((i) => i.message.includes("invalid TOML"))).toBe(true);
   });

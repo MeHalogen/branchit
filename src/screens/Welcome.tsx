@@ -32,7 +32,7 @@ export function Welcome(props: { width: number; onStart: () => void }) {
     >
       <Box>
         <Text color={color("accent")} bold>
-          {glyphs.bullet} Welcome to Branchy
+          {glyphs.bullet} Welcome to Branchit
         </Text>
       </Box>
       <Box marginTop={1}>
@@ -55,7 +55,7 @@ export function Welcome(props: { width: number; onStart: () => void }) {
       </Box>
       <Box marginTop={1}>
         <Text color={color("dim")}>
-          Branchy shows the underlying git command before acting, and treats
+          Branchit shows the underlying git command before acting, and treats
           destructive actions carefully.
         </Text>
       </Box>
