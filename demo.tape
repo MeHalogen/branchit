@@ -23,112 +23,117 @@ Type "clear" Enter
 Show
 
 # --- START TOUR ---
-Sleep 1.5s
+Sleep 2s
 
 # Launch Branchy
 Type "node /Users/mehalsrivastava/GitHub/Branchy/dist/cli.js" Enter
-Sleep 2s
+Sleep 3s
 
 # 1. Onboarding Screen
-# Welcome screen is visible, explaining the layout. Press Enter to start.
+# Let the user read the onboarding welcome screen.
+Sleep 4s
 Enter
-Sleep 2s
+Sleep 3s
 
 # 2. Fuzzy Branch Switching
-# Press 'b' to open the branch switcher, type 'payret' to filter to feat/payment-retry
+# Press 'b' to open the branch switcher.
 Type "b"
-Sleep 1.2s
-Type "payret"
 Sleep 1.5s
-# Press Tab to inspect the branch details (author, commit SHA, upstream status)
+# Type 'payret' to filter to feat/payment-retry.
+Type "payret"
+Sleep 2.5s
+# Press Tab to inspect the branch details (author, commit, upstream status).
 Tab
-Sleep 2.5s
-# Press Enter to switch to it
+Sleep 4.5s
+# Press Enter to switch branch.
 Enter
-Sleep 2.5s
+Sleep 3.5s
 
 # 3. Pull Request Readiness Checklist
-# Press 'p' on feat/payment-retry to check PR readiness (2 commits ahead, no upstream)
-Type "p"
-Sleep 2.5s
-# Press 'p' to push to origin (which sets upstream and updates checklist dynamically)
+# Press 'p' on feat/payment-retry to check PR readiness (2 commits ahead, no upstream).
 Type "p"
 Sleep 4.5s
-# Dismiss checklist and return to dashboard
+# Press 'p' to push to origin (sets upstream and updates checklist dynamically).
+Type "p"
+Sleep 6s
+# Dismiss checklist and return to dashboard.
 Escape
-Sleep 1.5s
+Sleep 2s
 
-# 4. Switch back to main branch
+# 4. Switch back to main branch.
 Type "b"
-Sleep 1.2s
+Sleep 1.5s
 Type "main"
 Sleep 1.5s
 Enter
-Sleep 2.5s
-
-# 5. Stale-Branch Sweeper with Undo
-# Press 's' to open the sweeper (shows merged branches safe to delete)
-Type "s"
-Sleep 2s
-# Press 'a' to select all safe branches
-Type "a"
-Sleep 1.5s
-# Press 'd' to delete them
-Type "d"
 Sleep 3.5s
-# Let's perform an Undo! Press 'u' to restore the deleted branches instantly
-Type "u"
-Sleep 4s
-# Close the sweeper result modal
-Escape
-Sleep 1.5s
 
-# 6. Conventional Commit & Security-Gated Pre-Commit Checks
-# Press 'c' to trigger the commit flow
-Type "c"
-Sleep 2s
-# Press 'a' to stage both modified files (src/payments/retry.ts, TODO.md)
+# 5. Stale-Branch Sweeper with Undo (Wow Moment!)
+# Press 's' to open the sweeper (shows merged branches safe to delete).
+Type "s"
+Sleep 4s
+# Press 'a' to select all safe branches.
 Type "a"
-Sleep 1.5s
-# Press Enter to go to commit type selection
+Sleep 2.5s
+# Press 'd' to open deletion confirmation.
+Type "d"
+Sleep 4.5s
+# Press Enter to execute the deletion.
 Enter
+Sleep 4.5s
+# Let's perform an Undo! Press 'u' to restore the deleted branches instantly.
+Type "u"
+Sleep 6s
+# Close the sweeper result modal.
+Escape
 Sleep 2s
-# Press Enter on 'feat' type
+
+# 6. Conventional Commit & Security-Gated Pre-Commit Checks (Wow Moment!)
+# Press 'c' to trigger the commit flow.
+Type "c"
+Sleep 3s
+# Press 'a' to stage both modified files (src/payments/retry.ts, TODO.md).
+Type "a"
+Sleep 2.5s
+# Press Enter to go to commit type selection.
 Enter
-Sleep 2s
+Sleep 3s
+# Press Enter on 'feat' type.
+Enter
+Sleep 3s
 # Scope selection (suggests 'payments' automatically). Press Enter to accept.
 Enter
-Sleep 2s
-# Type subject line
+Sleep 3s
+# Type subject line.
 Type "wire up exponential backoff for retries"
-Sleep 2.5s
-# Press Enter to go to body (leave empty)
+Sleep 3s
+# Press Enter to go to body (leave empty).
 Enter
 Sleep 1.5s
-# Press Enter to go to preview
+# Press Enter to go to preview.
 Enter
-Sleep 2s
-# Press Enter to proceed to checks
+Sleep 3.5s
+# Press Enter to proceed to checks.
 Enter
-Sleep 2s
+Sleep 3.5s
 # Prompt: Branchy detects repo-defined checks and requests explicit trust.
 # Press 't' to trust and run them.
 Type "t"
-Sleep 6s
+Sleep 8s
 # The checks pass and the commit is created automatically.
 # Press Enter on the final success screen to return to dashboard.
 Enter
-Sleep 2s
+Sleep 3s
 
 # 7. Command Palette
-# Press ':' to open the fuzzy command palette
+# Press ':' to open the fuzzy command palette.
 Type ":"
-Sleep 1.5s
+Sleep 2.5s
 Type "help"
-Sleep 2s
+Sleep 2.5s
 Escape
-Sleep 1.5s
+Sleep 2s
 
 # Exit Branchy
 Type "q"
-Sleep 2s
+Sleep 3s
