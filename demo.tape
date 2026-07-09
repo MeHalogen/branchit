@@ -3,7 +3,6 @@
 
 Set Shell bash
 Set FontSize 20
-Set FontFamily "JetBrains Mono"
 Set Width 1200
 Set Height 760
 Set Padding 24
