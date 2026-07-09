@@ -1,13 +1,14 @@
 # VHS Tape Script for Branchy Demo
 # Run: vhs demo.tape
 
-Set Shell "zsh"
-Set FontSize 15
+Set Shell bash
+Set FontSize 20
 Set FontFamily "JetBrains Mono"
-Set Width 960
-Set Height 640
-Set Padding 16
+Set Width 1200
+Set Height 760
+Set Padding 24
 Set Theme "Catppuccin Mocha"
+Set TypingSpeed 45ms
 
 # Output to docs directory
 Output docs/demo.gif
