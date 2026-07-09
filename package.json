@@ -7,6 +7,14 @@
   "bin": {
     "branchit": "./dist/cli.js"
   },
+  "repository": {
+    "type": "git",
+    "url": "git+https://github.com/MeHalogen/branchit.git"
+  },
+  "bugs": {
+    "url": "https://github.com/MeHalogen/branchit/issues"
+  },
+  "homepage": "https://github.com/MeHalogen/branchit#readme",
   "files": [
     "dist"
   ],
