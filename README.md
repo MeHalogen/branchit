@@ -9,6 +9,15 @@ destructive operations with care.
 
 ![Branchy Demo](docs/demo.gif)
 
+### 30-Second Demo Tour
+
+Here is what you are seeing in the demo above:
+
+* **Fuzzy Switcher (`b`)**: Open the switcher, type a few letters to filter branches, press `Tab` to inspect commits/author/upstream info, and press `Enter` to switch instantly.
+* **PR Readiness (`p`)**: Displays a checklist of your branch status (clean working tree, commits ahead, upstream config). Press `p` to push and set upstream, which dynamically updates the screen and shows a clickable GitHub compare URL.
+* **Safe Sweeper with Undo (`s`)**: Scans for stale branches. Safe-to-delete (merged) branches are pre-selected. Press `d` to delete them, and if you make a mistake, press `u` to **Undo** and restore them instantly!
+* **Conventional Commits & Pre-Commit Checks (`c`)**: A guided workflow to stage files (`a` for all), select commit type (`feat`), accept auto-suggested scope, and type a subject. Before committing, it prompts to run pre-commit checks (`lint`, `test`) with live progress and commits automatically on success.
+
 ```
 ╭──────────────────────────────────────────────────────────────────────────╮
 │ branchy  payments-api                                          main ↑2    │
