@@ -2,11 +2,14 @@
  * `branchit sweep [--dry-run|--yes] [--json]` — the stale-branch sweep without
  * the TUI. Dry-run is the default: it lists candidates and ends with a
  * shareable one-line report card. `--yes` deletes only branches proven merged
- * (`git branch -d`), and prints the exact command to restore each one.
+ * (`git branch -d`), journals the deletion for `branchit undo`, and prints the
+ * exact command to restore each one.
  */
 import type { ResolvedConfig } from "../config/schema.js";
-import { bulkDeleteBranches, type DeleteOutcome } from "../git/actions.js";
+import type { DeleteOutcome } from "../git/actions.js";
 import type { GitRepository } from "../git/repository.js";
+import { Journal } from "../journal/journal.js";
+import { Recorder } from "../journal/record.js";
 import { relativeTime, sanitizeForDisplay } from "../utils/format.js";
 import {
   gatherSweepCandidates,
@@ -48,14 +51,14 @@ export async function runSweepCommand(
 
   let deleted: DeleteOutcome[] = [];
   if (opts.yes && safe.length > 0) {
-    deleted = await bulkDeleteBranches(
-      git.client,
+    const recorder = new Recorder(git, Journal.forGitDir(git.gitDir));
+    ({ outcomes: deleted } = await recorder.deleteBranches(
       safe.map((c) => ({
         name: c.branch.name,
         mode: "safe" as const,
         restoreSha: c.branch.lastCommit?.sha ?? null,
       })),
-    );
+    ));
   }
   const failed = deleted.filter((d) => !d.ok);
 
@@ -101,6 +104,8 @@ export async function runSweepCommand(
       }
     }
     if (deleted.length === 0) out.push("Nothing safely merged to delete.");
+    else if (deleted.some((d) => d.ok))
+      out.push("Changed your mind? `branchit undo --yes` restores them all.");
     out.push("");
   }
 

@@ -180,3 +180,24 @@ describe("parseWorktreeList", () => {
     expect(wts[1]!.branchRef).toBe("refs/heads/hotfix");
   });
 });
+
+import { parseReflog } from "../src/git/recent.js";
+
+describe("parseReflog", () => {
+  it("extracts sha, reflog time, action and subject", () => {
+    const line = [
+      "abc123",
+      "HEAD@{2026-05-01T10:00:00+00:00}",
+      "reset: moving to HEAD~1",
+      "feat: lost work",
+    ].join("\x1f");
+    expect(parseReflog(`${line}\n`)).toEqual([
+      {
+        sha: "abc123",
+        at: "2026-05-01T10:00:00+00:00",
+        action: "reset: moving to HEAD~1",
+        subject: "feat: lost work",
+      },
+    ]);
+  });
+});

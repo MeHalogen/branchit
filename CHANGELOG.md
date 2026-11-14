@@ -3,6 +3,26 @@
 All notable changes to Branchit are documented here. This project follows
 [Semantic Versioning](https://semver.org/) and [Conventional Commits](https://www.conventionalcommits.org/).
 
+## 0.3.0 — Git with an undo button
+
+### Added
+- **Universal undo.** Every operation Branchit performs is recorded in an
+  operation journal (`.git/branchit/journal.jsonl`). Press `u` on the
+  dashboard, or run `branchit undo`, to see the last operation and the exact
+  inverse commands before anything runs. Covers branch switches, new
+  branches (including tracking branches), commits (soft reset, changes stay
+  staged), stash-and-switch (switch back and pop that exact stash) and branch
+  deletions from the sweeper or `branchit sweep --yes`.
+- Undo re-validates against the repository first and refuses, with a reason,
+  when you have moved on since (new commits, a different branch, a popped
+  stash), so it never clobbers later work.
+- Pushes are recorded but never undone; the undo screen says so plainly and
+  points to `git revert`.
+- `branchit undo --list` shows the recorded history; `--json` everywhere.
+- **Recover lost work** (`:` → "recover"): browse the HEAD reflog with
+  relative times, see the commit's stat and whether any branch still holds
+  it, and restore it as a new `recovered/<sha>` branch.
+
 ## 0.2.0 — Zero-friction first run
 
 ### Added

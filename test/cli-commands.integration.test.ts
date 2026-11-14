@@ -4,6 +4,7 @@ import { createDemoRepo } from "../src/commands/demo.js";
 import { runPrCommand } from "../src/commands/pr.js";
 import { printStatus } from "../src/commands/status.js";
 import { runSweepCommand } from "../src/commands/sweep.js";
+import { runUndoCommand } from "../src/commands/undo.js";
 import { loadConfig } from "../src/config/load.js";
 import { defaultConfig } from "../src/config/schema.js";
 import { detectRepository, GitRepository } from "../src/git/repository.js";
@@ -135,4 +136,45 @@ describe("branchit demo", () => {
     expect(json.summary.squashSuspected).toBe(1);
     expect(json.summary.remoteGone + json.summary.unmerged).toBeGreaterThanOrEqual(2);
   }, 30_000);
+});
+
+describe("branchit undo", () => {
+  it("previews without --yes, then restores branches deleted by sweep --yes", async () => {
+    const { repo, git } = await scenario();
+    const sha = (await repo.git(["rev-parse", "feat/merged"])).trim();
+    await runSweepCommand(git, defaultConfig(), { yes: true, json: false }, capture().io);
+
+    const preview = capture();
+    expect(await runUndoCommand(git, { yes: false, json: false, list: false }, preview.io)).toBe(0);
+    expect(preview.out).toContain("Deleted branch feat/merged");
+    expect(preview.out).toContain(`git branch -- feat/merged ${sha}`);
+    expect(preview.out).toContain("--yes");
+    expect(await repo.git(["branch", "--list", "feat/merged"])).toBe("");
+
+    const apply = capture();
+    expect(await runUndoCommand(git, { yes: true, json: false, list: false }, apply.io)).toBe(0);
+    expect((await repo.git(["rev-parse", "feat/merged"])).trim()).toBe(sha);
+    expect(apply.out).toContain("Undone");
+  });
+
+  it("--list shows history and --json is parseable", async () => {
+    const { git } = await scenario();
+    await runSweepCommand(git, defaultConfig(), { yes: true, json: false }, capture().io);
+    const list = capture();
+    await runUndoCommand(git, { yes: false, json: false, list: true }, list.io);
+    expect(list.out).toContain("Deleted branch feat/merged");
+    const json = capture();
+    await runUndoCommand(git, { yes: false, json: true, list: false }, json.io);
+    expect(JSON.parse(json.out)).toMatchObject({
+      undoable: true,
+      entry: { op: "delete-branches" },
+    });
+  });
+
+  it("exits non-zero with a reason when nothing can be undone", async () => {
+    const { git } = await scenario();
+    const cap = capture();
+    expect(await runUndoCommand(git, { yes: true, json: false, list: false }, cap.io)).toBe(1);
+    expect(cap.err).toContain("Nothing to undo");
+  });
 });

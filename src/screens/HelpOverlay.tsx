@@ -28,9 +28,10 @@ export function HelpOverlay(props: {
           ["b", "switch branch"],
           ["n", "new branch"],
           ["s", "sweep merged branches"],
+          ["u", "undo last operation"],
           ["f", "fetch remote"],
           ["r", "refresh"],
-          [":", "command palette"],
+          [":", "command palette (try: recover)"],
         ];
 
   return (

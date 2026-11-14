@@ -36,6 +36,7 @@ Usage:
   branchit                       Launch the interactive TUI in the current repository
   branchit demo                  Open the TUI in a throwaway sandbox repository
   branchit sweep [--yes]         List merged/stale branches; --yes deletes the safely merged ones
+  branchit undo [--yes]          Preview (or apply) the inverse of the last operation; --list for history
   branchit branches              List local branches (--all includes remotes)
   branchit pr                    Pull-request readiness for the current branch
   branchit status                Print repository status (--plain for key=value)
@@ -48,7 +49,7 @@ Usage:
 Options:
   --json                  Machine-readable JSON (sweep, branches, pr, status)
   --dry-run, -n           Sweep: show what would be deleted (the default)
-  --yes, -y               Sweep: delete the safely merged branches
+  --yes, -y               Sweep: delete the safely merged branches; undo: apply
   --no-color              Disable color output
   --ascii                 Use ASCII glyphs instead of Unicode
   --debug                 Print Git command timings to stderr
@@ -56,7 +57,7 @@ Options:
   --version, -v           Show the version
 
 Interactive keys:
-  b switch   n new   s sweep   c commit   p PR   f fetch   : commands   ? help   q quit
+  b switch   n new   s sweep   c commit   p PR   u undo   f fetch   : commands   ? help   q quit
 `;
 
 async function main(): Promise<number> {
@@ -136,6 +137,10 @@ async function main(): Promise<number> {
     return 0;
   }
   if (command === "switch") return nonInteractiveSwitch(git, positional[0]);
+  if (command === "undo") {
+    const { runUndoCommand } = await import("./commands/undo.js");
+    return runUndoCommand(git, { yes: flags.has("yes"), json, list: flags.has("list") }, io);
+  }
   if (command === "branches") {
     const { runBranchesCommand } = await import("./commands/branches.js");
     return runBranchesCommand(git, { json, all: flags.has("all") }, io);
@@ -175,7 +180,7 @@ async function main(): Promise<number> {
   return 0;
 }
 
-const KNOWN = new Set(["status", "switch", "branches", "config", "sweep", "pr", "demo"]);
+const KNOWN = new Set(["status", "switch", "branches", "config", "sweep", "pr", "demo", "undo"]);
 
 async function nonInteractiveSwitch(git: GitRepository, name: string | undefined): Promise<number> {
   if (!name) {
