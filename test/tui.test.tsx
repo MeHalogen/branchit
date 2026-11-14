@@ -70,6 +70,8 @@ describe("App TUI", () => {
     await waitUntil(
       async () => (await git.getState()).currentBranch === "feat/payment-retry",
       "the switch to feat/payment-retry",
+      10_000,
+      () => ui.lastFrame() ?? "",
     );
     ui.unmount();
   });

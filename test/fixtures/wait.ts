@@ -7,13 +7,15 @@ export async function waitUntil(
   check: () => boolean | Promise<boolean>,
   what: string,
   timeout = 10_000,
+  /** Extra context for the failure message, e.g. the last rendered frame. */
+  context?: () => string,
 ): Promise<void> {
   const start = Date.now();
   while (Date.now() - start < timeout) {
     if (await check()) return;
     await delay(25);
   }
-  throw new Error(`Timed out waiting for ${what}`);
+  throw new Error(`Timed out waiting for ${what}${context ? `\n${context()}` : ""}`);
 }
 
 /** Wait until the last rendered frame contains `needle`. */
