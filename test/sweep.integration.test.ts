@@ -1,11 +1,8 @@
-import { describe, it, expect, afterEach } from "vitest";
-import { createRepo, type TempRepo } from "./fixtures/gitRepo.js";
-import { detectRepository, GitRepository } from "../src/git/repository.js";
-import {
-  gatherSweepCandidates,
-  DEFAULT_PROTECTED,
-} from "../src/workflows/sweep.js";
+import { afterEach, describe, expect, it } from "vitest";
 import { bulkDeleteBranches, recreateBranches } from "../src/git/actions.js";
+import { detectRepository, GitRepository } from "../src/git/repository.js";
+import { DEFAULT_PROTECTED, gatherSweepCandidates } from "../src/workflows/sweep.js";
+import { createRepo, type TempRepo } from "./fixtures/gitRepo.js";
 
 const repos: TempRepo[] = [];
 afterEach(async () => {

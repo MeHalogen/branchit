@@ -1,8 +1,8 @@
-import React from "react";
+
+import { homedir } from "node:os";
 import { Box, Text, useApp, useInput } from "ink";
 import { useColor } from "../app/theme-context.js";
 import { abbreviateHome } from "../utils/format.js";
-import { homedir } from "node:os";
 
 /** Polished empty state for when Branchit is launched outside a Git repo. */
 export function NoRepo(props: { cwd: string; width: number }) {

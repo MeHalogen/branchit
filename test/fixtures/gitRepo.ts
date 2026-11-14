@@ -5,10 +5,11 @@
  * with real `git` invocations — no mocks. A bare repo can act as a fake remote,
  * so tests never touch the network.
  */
-import { execa } from "execa";
-import { mkdtemp, rm, writeFile, mkdir } from "node:fs/promises";
+
+import { mkdir, mkdtemp, rm, writeFile } from "node:fs/promises";
 import { tmpdir } from "node:os";
 import { join } from "node:path";
+import { execa } from "execa";
 
 export class TempRepo {
   constructor(public readonly dir: string) {}
@@ -22,9 +23,7 @@ export class TempRepo {
       extendEnv: true,
     });
     if (res.exitCode !== 0) {
-      throw new Error(
-        `git ${args.join(" ")} failed (${res.exitCode}): ${res.stderr}`,
-      );
+      throw new Error(`git ${args.join(" ")} failed (${res.exitCode}): ${res.stderr}`);
     }
     return res.stdout;
   }

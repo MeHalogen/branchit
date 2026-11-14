@@ -1,15 +1,11 @@
-import { describe, it, expect } from "vitest";
+import { describe, expect, it } from "vitest";
 import { rankBranches } from "../src/search/rank.js";
 
 const names = (s: string[]) => s.map((name) => ({ name }));
 
 describe("rankBranches", () => {
   it("returns all items in recency order for an empty query", () => {
-    const items = [
-      { name: "a", recencyRank: 2 },
-      { name: "b", recencyRank: 0 },
-      { name: "c" },
-    ];
+    const items = [{ name: "a", recencyRank: 2 }, { name: "b", recencyRank: 0 }, { name: "c" }];
     const ranked = rankBranches(items, "");
     expect(ranked.map((r) => r.item.name)).toEqual(["b", "a", "c"]);
   });
@@ -31,11 +27,7 @@ describe("rankBranches", () => {
   });
 
   it("matches multi-token fuzzy queries like 'pay ret' via subsequence", () => {
-    const items = names([
-      "feat/payment-retry",
-      "feat/payment-timeout",
-      "chore/deps",
-    ]);
+    const items = names(["feat/payment-retry", "feat/payment-timeout", "chore/deps"]);
     const ranked = rankBranches(items, "payret");
     expect(ranked[0]!.item.name).toBe("feat/payment-retry");
   });

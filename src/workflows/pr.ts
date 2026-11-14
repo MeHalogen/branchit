@@ -6,12 +6,13 @@
  * `gatherPrReadiness` runs the small set of Git calls to feed it and resolves
  * the host identity + optional `gh` availability.
  */
+
+import { execa } from "execa";
 import type { GitClient } from "../git/client.js";
 import { detectGitVersion } from "../git/client.js";
 import { query } from "../git/command.js";
-import { parseRemoteUrl, buildCompareUrl, type RepoIdentity } from "../git/host.js";
+import { buildCompareUrl, parseRemoteUrl, type RepoIdentity } from "../git/host.js";
 import type { RepositoryState, UpstreamInfo } from "../git/models.js";
-import { execa } from "execa";
 
 export interface ReadinessItem {
   ok: boolean;
@@ -47,7 +48,10 @@ export function computePrReadiness(input: PrReadinessInput): PrReadiness {
   const unpushed = hasUpstream ? input.upstream!.ahead : input.aheadOfBase;
 
   const items: ReadinessItem[] = [];
-  items.push({ ok: input.isClean, label: input.isClean ? "Working tree clean" : "Working tree has uncommitted changes" });
+  items.push({
+    ok: input.isClean,
+    label: input.isClean ? "Working tree clean" : "Working tree has uncommitted changes",
+  });
   items.push({
     ok: input.aheadOfBase > 0,
     label:
@@ -68,10 +72,7 @@ export function computePrReadiness(input: PrReadinessInput): PrReadiness {
   });
   items.push({
     ok: unpushed === 0,
-    label:
-      unpushed === 0
-        ? "All commits pushed"
-        : `${unpushed} local commit(s) not pushed`,
+    label: unpushed === 0 ? "All commits pushed" : `${unpushed} local commit(s) not pushed`,
   });
 
   return {
@@ -131,9 +132,7 @@ export async function gatherPrReadiness(
   // Cheap clean check: a single '?' or entry line means not clean. We already
   // have richer status elsewhere, but keep this self-contained.
   const isClean = status.ok
-    ? status.stdout
-        .split("\0")
-        .every((t) => t === "" || t.startsWith("# "))
+    ? status.stdout.split("\0").every((t) => t === "" || t.startsWith("# "))
     : false;
 
   const readiness = computePrReadiness({
@@ -146,10 +145,8 @@ export async function gatherPrReadiness(
     hasRemote: state.remotes.length > 0,
   });
 
-  const pushRemote =
-    upstream?.remoteName ?? state.remotes[0]?.name ?? null;
-  const remote =
-    state.remotes.find((r) => r.name === pushRemote) ?? state.remotes[0] ?? null;
+  const pushRemote = upstream?.remoteName ?? state.remotes[0]?.name ?? null;
+  const remote = state.remotes.find((r) => r.name === pushRemote) ?? state.remotes[0] ?? null;
   const identity = remote?.fetchUrl ? parseRemoteUrl(remote.fetchUrl) : null;
   const compareUrl = identity ? buildCompareUrl(identity, base, head) : null;
   const ghAvailable = identity?.host === "github" ? await detectGh() : false;

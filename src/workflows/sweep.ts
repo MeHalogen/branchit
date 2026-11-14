@@ -172,14 +172,22 @@ export async function gatherSweepCandidates(
 
     if (protectedByPolicy) {
       out.push(
-        classifyBranch(branch, { merged: false, uniqueCommitCount: 0, patchEquivalent: false }, config),
+        classifyBranch(
+          branch,
+          { merged: false, uniqueCommitCount: 0, patchEquivalent: false },
+          config,
+        ),
       );
       continue;
     }
 
     if (mergedSet.has(branch.name)) {
       out.push(
-        classifyBranch(branch, { merged: true, uniqueCommitCount: 0, patchEquivalent: false }, config),
+        classifyBranch(
+          branch,
+          { merged: true, uniqueCommitCount: 0, patchEquivalent: false },
+          config,
+        ),
       );
       continue;
     }

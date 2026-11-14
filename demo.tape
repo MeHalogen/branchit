@@ -1,5 +1,5 @@
 # VHS Tape Script for Branchit Demo
-# Run: vhs demo.tape
+# Run from the repository root: npm run demo:gif
 
 Set Shell bash
 Set FontSize 20
@@ -14,10 +14,11 @@ Output docs/demo.gif
 
 # Hidden setup commands to ensure a clean slate and correct config
 Hide
+Type 'export BRANCHIT_SRC="$PWD"' Enter
 Type "export BRANCHIT_CONFIG_DIR=/tmp/branchit-config" Enter
 Type "rm -rf /tmp/branchit-config" Enter
 Type "mkdir -p /tmp/branchit-config" Enter
-Type "node /Users/mehalsrivastava/GitHub/Branchit/scripts/demo-repo.ts /tmp/branchit-demo" Enter
+Type "node --import tsx scripts/demo-repo.ts /tmp/branchit-demo" Enter
 Type "cd /tmp/branchit-demo" Enter
 Type "clear" Enter
 Show
@@ -26,7 +27,7 @@ Show
 Sleep 2s
 
 # Launch Branchit
-Type "node /Users/mehalsrivastava/GitHub/Branchit/dist/cli.js" Enter
+Type 'node "$BRANCHIT_SRC/dist/cli.js"' Enter
 Sleep 3s
 
 # 1. Onboarding Screen

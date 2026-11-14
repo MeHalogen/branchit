@@ -1,16 +1,16 @@
-import React from "react";
+
+import { homedir } from "node:os";
 import { Box, Text } from "ink";
 import type { RepoData } from "../app/loadRepo.js";
 import { orderedLocalBranches } from "../app/loadRepo.js";
 import { useColor, useTheme } from "../app/theme-context.js";
-import { COMMANDS, type Command } from "../keys/registry.js";
 import { BranchRow } from "../components/BranchRow.js";
+import { COMMANDS, type Command } from "../keys/registry.js";
 import {
   abbreviateHome,
   repoNameFromRoot,
   sanitizeForDisplay,
 } from "../utils/format.js";
-import { homedir } from "node:os";
 
 const IMPLEMENTED: ReadonlySet<string> = new Set([
   "dashboard.switchBranch",

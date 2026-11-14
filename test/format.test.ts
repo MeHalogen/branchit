@@ -1,12 +1,12 @@
-import { describe, it, expect } from "vitest";
-import {
-  relativeTime,
-  middleTruncate,
-  sanitizeForDisplay,
-  repoNameFromRoot,
-  abbreviateHome,
-} from "../src/utils/format.js";
+import { describe, expect, it } from "vitest";
 import { slugify } from "../src/screens/NewBranch.js";
+import {
+  abbreviateHome,
+  middleTruncate,
+  relativeTime,
+  repoNameFromRoot,
+  sanitizeForDisplay,
+} from "../src/utils/format.js";
 
 describe("relativeTime", () => {
   const now = new Date("2024-06-01T12:00:00Z");

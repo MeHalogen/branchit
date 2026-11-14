@@ -71,9 +71,7 @@ export interface WorkingTreeState {
   get isClean(): boolean;
 }
 
-export function makeWorkingTree(
-  files: Omit<WorkingTreeState, "isClean">,
-): WorkingTreeState {
+export function makeWorkingTree(files: Omit<WorkingTreeState, "isClean">): WorkingTreeState {
   return {
     ...files,
     get isClean() {
@@ -97,13 +95,7 @@ export interface Remote {
 }
 
 /** In-progress Git operations that must take priority over normal workflows. */
-export type OperationState =
-  | "none"
-  | "merge"
-  | "rebase"
-  | "cherry_pick"
-  | "revert"
-  | "bisect";
+export type OperationState = "none" | "merge" | "rebase" | "cherry_pick" | "revert" | "bisect";
 
 export interface RepositoryState {
   rootPath: string;

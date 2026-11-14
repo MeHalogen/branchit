@@ -2,7 +2,7 @@
  * `branchit config` — show the resolved configuration and where it came from.
  */
 import type { LoadedConfig } from "../config/load.js";
-import { userConfigPath, repoConfigPath } from "../config/load.js";
+import { repoConfigPath, userConfigPath } from "../config/load.js";
 
 export function printConfig(loaded: LoadedConfig, root?: string): void {
   const { config, sources } = loaded;
@@ -34,5 +34,5 @@ export function printConfig(loaded: LoadedConfig, root?: string): void {
   lines.push(
     `  commands        = ${config.checks.commands ? config.checks.commands.join(", ") : "(auto-detect from package.json)"}`,
   );
-  process.stdout.write(lines.join("\n") + "\n");
+  process.stdout.write(`${lines.join("\n")}\n`);
 }

@@ -5,9 +5,10 @@
  * timeout so the UI can never hang forever, and return the same typed
  * {@link ActionResult} shape as local actions.
  */
+
+import type { ActionResult } from "./actions.js";
 import type { GitClient } from "./client.js";
 import { mutation } from "./command.js";
-import type { ActionResult } from "./actions.js";
 
 export async function fetchRemote(
   client: GitClient,

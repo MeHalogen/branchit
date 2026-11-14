@@ -1,25 +1,24 @@
-import React, { useMemo, useRef, useState } from "react";
 import { Box, Text, useInput } from "ink";
-import type { WorkingTreeState } from "../git/models.js";
+import { useMemo, useRef, useState } from "react";
+import { useColor, useTheme } from "../app/theme-context.js";
 import type { CommitResult } from "../git/actions.js";
+import type { WorkingTreeState } from "../git/models.js";
+import { sanitizeForDisplay } from "../utils/format.js";
 import type {
   CheckCommand,
   CheckRunResult,
   CheckState,
 } from "../workflows/checks.js";
 import {
-  COMMIT_TYPES,
   buildCommitMessage,
+  COMMIT_TYPES,
+  type CommitDraft,
+  type CommitType,
   inferScope,
   stageableFiles,
   suggestType,
   validateSubject,
-  type CommitDraft,
-  type CommitType,
 } from "../workflows/commit.js";
-
-import { useColor, useTheme } from "../app/theme-context.js";
-import { sanitizeForDisplay } from "../utils/format.js";
 
 export interface CommitConfig {
   types: CommitType[];
@@ -95,7 +94,7 @@ export function CommitFlow(props: {
   const suggestedTypeName = useMemo(() => suggestType(workingTree.staged), [workingTree.staged]);
   const [typeIdx, setTypeIdx] = useState(() => {
     const i = TYPES.findIndex((t) => t.name === suggestedTypeName);
-    return i >= 0 ? i : 0;
+    return Math.max(i , 0);
   });
   const inferredScope = useMemo(() => inferScope(workingTree.staged), [workingTree.staged]);
   const [scope, setScope] = useState("");

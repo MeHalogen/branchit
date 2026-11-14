@@ -1,8 +1,8 @@
-import React from "react";
+
 import { Box, Text, useInput } from "ink";
-import type { PrContext } from "../workflows/pr.js";
 import { useColor, useTheme } from "../app/theme-context.js";
 import { sanitizeForDisplay } from "../utils/format.js";
+import type { PrContext } from "../workflows/pr.js";
 
 /**
  * Pull-request readiness. Shows a checklist derived from real branch state and

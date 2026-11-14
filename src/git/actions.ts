@@ -55,10 +55,7 @@ export interface CommitResult {
  * Commit the staged index with `message` passed on stdin. Git hooks run
  * normally; a failing hook surfaces as `ok: false` with raw output preserved.
  */
-export async function commitChanges(
-  client: GitClient,
-  message: string,
-): Promise<CommitResult> {
+export async function commitChanges(client: GitClient, message: string): Promise<CommitResult> {
   const res = await client.run(mutation.commitFromStdin(), { input: message });
   if (!res.ok) {
     return { ok: false, error: res.error, raw: res.stderr || res.stdout };
@@ -83,18 +80,11 @@ export function switchTrackNew(
   return runMutation(client, mutation.switchTrackNew(localName, remoteRef));
 }
 
-export function createBranch(
-  client: GitClient,
-  name: string,
-  base: string,
-): Promise<ActionResult> {
+export function createBranch(client: GitClient, name: string, base: string): Promise<ActionResult> {
   return runMutation(client, mutation.createBranch(name, base));
 }
 
-export function stashBeforeSwitch(
-  client: GitClient,
-  message: string,
-): Promise<ActionResult> {
+export function stashBeforeSwitch(client: GitClient, message: string): Promise<ActionResult> {
   return runMutation(client, mutation.stashPushIncludeUntracked(message));
 }
 

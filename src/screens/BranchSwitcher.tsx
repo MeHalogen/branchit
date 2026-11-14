@@ -1,10 +1,10 @@
-import React, { useMemo, useState } from "react";
 import { Box, Text, useInput } from "ink";
-import type { Branch } from "../git/models.js";
+import { useMemo, useState } from "react";
 import type { RepoData } from "../app/loadRepo.js";
-import { rankBranches } from "../search/rank.js";
-import { BranchRow } from "../components/BranchRow.js";
 import { useColor, useTheme } from "../app/theme-context.js";
+import { BranchRow } from "../components/BranchRow.js";
+import type { Branch } from "../git/models.js";
+import { rankBranches } from "../search/rank.js";
 import {
   absoluteTime,
   relativeTime,
@@ -124,7 +124,7 @@ export function BranchSwitcher(props: {
   });
   const selectedRowIdx = branchIdxToRowIdx[clampedIndex] ?? 0;
   let start = Math.max(0, selectedRowIdx - Math.floor(WINDOW / 2));
-  let end = Math.min(rows.length, start + WINDOW);
+  const end = Math.min(rows.length, start + WINDOW);
   start = Math.max(0, end - WINDOW);
   const windowRows = rows.slice(start, end);
 

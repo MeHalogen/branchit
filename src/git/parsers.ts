@@ -165,7 +165,7 @@ export function parseForEachRefBranches(stdout: string): Branch[] {
     const isHead = (f[2] ?? " ") === "*";
     const sha = f[3] ?? "";
     const shortSha = f[4] ?? "";
-    const upstreamRef = f[5] ?? "";
+    const _upstreamRef = f[5] ?? "";
     const upstreamShort = f[6] ?? "";
     const track = f[7] ?? "";
     const subject = f[8] ?? "";
@@ -173,9 +173,7 @@ export function parseForEachRefBranches(stdout: string): Branch[] {
     const committedAt = f[10] ?? "";
     const worktreePath = f[11] ?? "";
 
-    const kind: BranchKind = refname.startsWith("refs/heads/")
-      ? "local"
-      : "remote";
+    const kind: BranchKind = refname.startsWith("refs/heads/") ? "local" : "remote";
 
     // Skip the symbolic remote HEAD pseudo-ref (e.g. origin/HEAD).
     if (kind === "remote" && (short.endsWith("/HEAD") || refname.endsWith("/HEAD"))) {
@@ -201,9 +199,7 @@ export function parseForEachRefBranches(stdout: string): Branch[] {
       kind,
       isCurrent: isHead,
       upstream,
-      lastCommit: sha
-        ? { sha, shortSha, subject, authorName, committedAt }
-        : null,
+      lastCommit: sha ? { sha, shortSha, subject, authorName, committedAt } : null,
       worktreePath: worktreePath || null,
     });
   }

@@ -5,10 +5,11 @@
  *
  *   node --import tsx scripts/demo-repo.ts [targetDir]
  */
-import { execa } from "execa";
-import { mkdtemp, writeFile, mkdir, rm } from "node:fs/promises";
+
+import { mkdir, mkdtemp, rm, writeFile } from "node:fs/promises";
 import { tmpdir } from "node:os";
 import { join } from "node:path";
+import { execa } from "execa";
 
 async function git(cwd: string, args: string[]) {
   const res = await execa("git", args, { cwd, reject: false, shell: false });
@@ -50,16 +51,28 @@ async function main() {
   await git(dir, ["config", "commit.gpgsign", "false"]);
 
   await commit(dir, "README.md", "# payments-api\n", "chore: initial commit");
-  await commit(dir, "package.json", JSON.stringify({
-    name: "payments-api",
-    version: "1.0.0",
-    scripts: {
-      typecheck: "echo '✓ TypeScript types clean' && sleep 0.5",
-      lint: "echo '✓ ESLint passed' && sleep 0.5",
-      test: "echo '✓ 42 unit tests passed' && sleep 0.5"
-    }
-  }, null, 2) + "\n", "chore: add package.json");
-  await commit(dir, ".branchit.toml", `[ui]
+  await commit(
+    dir,
+    "package.json",
+    `${JSON.stringify(
+      {
+        name: "payments-api",
+        version: "1.0.0",
+        scripts: {
+          typecheck: "echo '✓ TypeScript types clean' && sleep 0.5",
+          lint: "echo '✓ ESLint passed' && sleep 0.5",
+          test: "echo '✓ 42 unit tests passed' && sleep 0.5",
+        },
+      },
+      null,
+      2,
+    )}\n`,
+    "chore: add package.json",
+  );
+  await commit(
+    dir,
+    ".branchit.toml",
+    `[ui]
 command_preview = true
 theme = "default"
 
@@ -71,9 +84,16 @@ protected = ["main", "release/*"]
 scopes = ["cli", "git", "ui", "payments"]
 max_subject_length = 72
 require_scope = true
-`, "chore: add branchit config");
+`,
+    "chore: add branchit config",
+  );
   await commit(dir, "src/index.ts", "export const version = '1.0.0';\n", "feat: bootstrap service");
-  await commit(dir, "src/payments/retry.ts", "export function retry() {}\n", "feat(payments): add retry stub");
+  await commit(
+    dir,
+    "src/payments/retry.ts",
+    "export function retry() {}\n",
+    "feat(payments): add retry stub",
+  );
   await git(dir, ["remote", "add", "origin", remote]);
   await git(dir, ["push", "-u", "origin", "main"]);
   await git(dir, ["remote", "set-head", "origin", "main"]);
@@ -86,14 +106,29 @@ require_scope = true
 
   // An unmerged experiment.
   await git(dir, ["switch", "-c", "experiment/redis-cache"]);
-  await commit(dir, "src/cache.ts", "export const cache = new Map();\n", "feat: experimental cache");
+  await commit(
+    dir,
+    "src/cache.ts",
+    "export const cache = new Map();\n",
+    "feat: experimental cache",
+  );
   await git(dir, ["switch", "main"]);
 
   // A branch ahead of its upstream (does not touch the dirty file below).
   await git(dir, ["switch", "-c", "feat/payment-retry"]);
-  await commit(dir, "src/payments/policy.ts", "export const policy = {};\n", "feat(payments): retry policy");
+  await commit(
+    dir,
+    "src/payments/policy.ts",
+    "export const policy = {};\n",
+    "feat(payments): retry policy",
+  );
   await git(dir, ["push", "-u", "origin", "feat/payment-retry"]);
-  await commit(dir, "src/payments/policy.ts", "export const policy = { max: 5 };\n", "feat(payments): tune policy (unpushed)");
+  await commit(
+    dir,
+    "src/payments/policy.ts",
+    "export const policy = { max: 5 };\n",
+    "feat(payments): tune policy (unpushed)",
+  );
 
   // A remote-gone branch: pushed then deleted upstream.
   await git(dir, ["switch", "-c", "fix/legacy-webhook"]);
@@ -108,13 +143,16 @@ require_scope = true
   // Leave a dirty working tree with a change under src/payments/ so the commit
   // helper infers a "payments" scope. This file is untouched by the branches
   // above, so switching carries it over cleanly.
-  await writeFile(join(dir, "src/payments/retry.ts"), "export function retry() { /* backoff */ }\n");
+  await writeFile(
+    join(dir, "src/payments/retry.ts"),
+    "export function retry() { /* backoff */ }\n",
+  );
   await writeFile(join(dir, "TODO.md"), "- wire up exponential backoff\n");
 
   process.stdout.write(`Demo repository ready:\n  ${dir}\n\nTry it:\n  cd ${dir} && branchit\n`);
 }
 
 main().catch((err) => {
-  process.stderr.write(String(err) + "\n");
+  process.stderr.write(`${String(err)}\n`);
   process.exit(1);
 });

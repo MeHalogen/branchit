@@ -1,5 +1,5 @@
-import React, { useMemo, useState } from "react";
 import { Box, Text, useInput } from "ink";
+import { useMemo, useState } from "react";
 import type { RepoData } from "../app/loadRepo.js";
 import { useColor, useTheme } from "../app/theme-context.js";
 import { sanitizeForDisplay } from "../utils/format.js";

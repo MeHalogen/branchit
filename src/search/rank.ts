@@ -104,10 +104,7 @@ function recencyBonus(item: Rankable): number {
  * Rank a list against a query. An empty query returns items in recency order
  * (recent first), preserving input order as a stable fallback.
  */
-export function rankBranches<T extends Rankable>(
-  items: T[],
-  query: string,
-): RankedMatch<T>[] {
+export function rankBranches<T extends Rankable>(items: T[], query: string): RankedMatch<T>[] {
   const q = query.trim();
   if (q === "") {
     return items
@@ -158,8 +155,7 @@ export function rankBranches<T extends Rankable>(
   results.sort((a, b) => {
     if (b.score !== a.score) return b.score - a.score;
     // Stable-ish tie-break: shorter name, then alphabetical.
-    if (a.item.name.length !== b.item.name.length)
-      return a.item.name.length - b.item.name.length;
+    if (a.item.name.length !== b.item.name.length) return a.item.name.length - b.item.name.length;
     return a.item.name.localeCompare(b.item.name);
   });
   return results;

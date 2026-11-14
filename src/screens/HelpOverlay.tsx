@@ -1,7 +1,7 @@
-import React from "react";
+
 import { Box, Text, useInput } from "ink";
-import { COMMANDS } from "../keys/registry.js";
 import { useColor } from "../app/theme-context.js";
+import { COMMANDS } from "../keys/registry.js";
 
 /** Contextual help. Shows the current screen's keys first, then global keys. */
 export function HelpOverlay(props: {

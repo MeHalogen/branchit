@@ -1,4 +1,4 @@
-import React from "react";
+
 import { Box, Text } from "ink";
 import { useColor, useTheme } from "../app/theme-context.js";
 

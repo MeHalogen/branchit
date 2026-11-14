@@ -116,7 +116,8 @@ export function mergeConfig(base: ResolvedConfig, file: ConfigFile): ResolvedCon
     if (file.ui.theme !== undefined) next.ui.theme = file.ui.theme;
   }
   if (file.branches) {
-    if (file.branches.default_base !== undefined) next.branches.defaultBase = file.branches.default_base;
+    if (file.branches.default_base !== undefined)
+      next.branches.defaultBase = file.branches.default_base;
     if (file.branches.protected !== undefined) next.branches.protected = file.branches.protected;
   }
   if (file.commit) {
@@ -125,7 +126,8 @@ export function mergeConfig(base: ResolvedConfig, file: ConfigFile): ResolvedCon
     if (file.commit.scopes !== undefined) next.commit.scopes = file.commit.scopes;
     if (file.commit.max_subject_length !== undefined)
       next.commit.maxSubjectLength = file.commit.max_subject_length;
-    if (file.commit.require_scope !== undefined) next.commit.requireScope = file.commit.require_scope;
+    if (file.commit.require_scope !== undefined)
+      next.commit.requireScope = file.commit.require_scope;
   }
   if (file.checks) {
     if (file.checks.commands !== undefined) next.checks.commands = file.checks.commands;

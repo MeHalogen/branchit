@@ -1,7 +1,7 @@
-import React from "react";
+
 import { Box, Text } from "ink";
-import type { Branch } from "../git/models.js";
 import { useColor, useTheme } from "../app/theme-context.js";
+import type { Branch } from "../git/models.js";
 import { middleTruncate, relativeTime, sanitizeForDisplay } from "../utils/format.js";
 
 /** One-line branch summary used by the switcher and dashboard lists. */
@@ -59,7 +59,7 @@ export function BranchRow(props: {
       </Box>
       <Box flexGrow={1} justifyContent="flex-end">
         <Text color={metaColorFor(branch, color)}>{metaText}</Text>
-        {rel ? <Text color={color("dim")}>{"  " + rel}</Text> : null}
+        {rel ? <Text color={color("dim")}>{`  ${rel}`}</Text> : null}
       </Box>
     </Box>
   );

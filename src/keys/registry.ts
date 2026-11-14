@@ -113,9 +113,7 @@ function assertNoShortcutCollisions(): void {
     if (!c.shortcut) continue;
     const existing = seen.get(c.shortcut);
     if (existing) {
-      throw new Error(
-        `Keybinding collision on '${c.shortcut}': ${existing} vs ${c.id}`,
-      );
+      throw new Error(`Keybinding collision on '${c.shortcut}': ${existing} vs ${c.id}`);
     }
     seen.set(c.shortcut, c.id);
   }

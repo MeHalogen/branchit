@@ -6,10 +6,10 @@
  * done here with argument arrays and `shell: false`. A check name existing is
  * never treated as proof it is safe to run.
  */
-import { execa } from "execa";
-import { readFileSync } from "node:fs";
-import { existsSync } from "node:fs";
+
+import { existsSync, readFileSync } from "node:fs";
 import { join } from "node:path";
+import { execa } from "execa";
 
 export interface CheckCommand {
   /** Short label, e.g. "lint". */

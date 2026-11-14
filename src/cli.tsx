@@ -1,17 +1,17 @@
-import React from "react";
+
 import { render } from "ink";
-import { detectRepository, GitRepository } from "./git/repository.js";
-import { detectGitVersion } from "./git/client.js";
-import { loadRepoData } from "./app/loadRepo.js";
 import { App } from "./app/App.js";
-import { NoRepo } from "./screens/NoRepo.js";
+import { loadRepoData } from "./app/loadRepo.js";
 import { ThemeProvider } from "./app/theme-context.js";
-import { resolveTheme } from "./theme/tokens.js";
+import { printConfig } from "./commands/config.js";
 import { runDoctor } from "./commands/doctor.js";
 import { printPlainStatus } from "./commands/status.js";
-import { loadConfig, formatIssues } from "./config/load.js";
-import { printConfig } from "./commands/config.js";
+import { formatIssues, loadConfig } from "./config/load.js";
 import { hasOnboarded } from "./config/state.js";
+import { detectGitVersion } from "./git/client.js";
+import { detectRepository, GitRepository } from "./git/repository.js";
+import { NoRepo } from "./screens/NoRepo.js";
+import { resolveTheme } from "./theme/tokens.js";
 
 const VERSION = "0.1.0";
 
@@ -63,7 +63,7 @@ async function main(): Promise<void> {
     return;
   }
   if (flags.has("version") || command === "version") {
-    process.stdout.write(VERSION + "\n");
+    process.stdout.write(`${VERSION}\n`);
     return;
   }
   if (command === "doctor") {
@@ -111,7 +111,7 @@ async function main(): Promise<void> {
   const loaded = loadConfig(git.root);
   if (loaded.issues.length > 0) {
     process.stderr.write("Branchit configuration problems:\n");
-    process.stderr.write(formatIssues(loaded.issues) + "\n");
+    process.stderr.write(`${formatIssues(loaded.issues)}\n`);
   }
   const cfg = loaded.config;
 
@@ -195,7 +195,7 @@ main().catch((err) => {
     `branchit encountered an unexpected error: ${err instanceof Error ? err.message : String(err)}\n`,
   );
   if (process.env["BRANCHIT_LOG"] === "debug" && err instanceof Error) {
-    process.stderr.write((err.stack ?? "") + "\n");
+    process.stderr.write(`${err.stack ?? ""}\n`);
   }
   process.exitCode = 1;
 });

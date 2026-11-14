@@ -1,8 +1,8 @@
-import { describe, it, expect } from "vitest";
+import { describe, expect, it } from "vitest";
 import {
-  parseStatusPorcelainV2,
   parseForEachRefBranches,
   parseRemotes,
+  parseStatusPorcelainV2,
   parseWorktreeList,
 } from "../src/git/parsers.js";
 
@@ -11,16 +11,15 @@ const R = "\x1e";
 
 describe("parseStatusPorcelainV2", () => {
   it("parses branch headers, staged, modified and untracked", () => {
-    const out =
-      [
-        "# branch.oid abc123",
-        "# branch.head feat/x",
-        "# branch.upstream origin/feat/x",
-        "# branch.ab +2 -1",
-        "1 M. N... 100644 100644 100644 aaa bbb src/staged.ts",
-        "1 .M N... 100644 100644 100644 aaa bbb src/modified.ts",
-        "? untracked.log",
-      ].join("\0") + "\0";
+    const out = `${[
+      "# branch.oid abc123",
+      "# branch.head feat/x",
+      "# branch.upstream origin/feat/x",
+      "# branch.ab +2 -1",
+      "1 M. N... 100644 100644 100644 aaa bbb src/staged.ts",
+      "1 .M N... 100644 100644 100644 aaa bbb src/modified.ts",
+      "? untracked.log",
+    ].join("\0")}\0`;
     const parsed = parseStatusPorcelainV2(out);
     expect(parsed.branch.head).toBe("feat/x");
     expect(parsed.branch.upstream).toBe("origin/feat/x");
@@ -33,7 +32,7 @@ describe("parseStatusPorcelainV2", () => {
   });
 
   it("detects detached HEAD and a clean tree", () => {
-    const out = ["# branch.oid abc123", "# branch.head (detached)"].join("\0") + "\0";
+    const out = `${["# branch.oid abc123", "# branch.head (detached)"].join("\0")}\0`;
     const parsed = parseStatusPorcelainV2(out);
     expect(parsed.branch.detached).toBe(true);
     expect(parsed.branch.head).toBeNull();
@@ -41,12 +40,11 @@ describe("parseStatusPorcelainV2", () => {
   });
 
   it("handles renames whose orig path is a separate NUL field", () => {
-    const out =
-      [
-        "# branch.head main",
-        "2 R. N... 100644 100644 100644 aaa bbb R100 new name.ts",
-        "old name.ts",
-      ].join("\0") + "\0";
+    const out = `${[
+      "# branch.head main",
+      "2 R. N... 100644 100644 100644 aaa bbb R100 new name.ts",
+      "old name.ts",
+    ].join("\0")}\0`;
     const parsed = parseStatusPorcelainV2(out);
     expect(parsed.workingTree.staged).toHaveLength(1);
     expect(parsed.workingTree.staged[0]!.path).toBe("new name.ts");
@@ -55,14 +53,9 @@ describe("parseStatusPorcelainV2", () => {
   });
 
   it("classifies unmerged entries as conflicted", () => {
-    const out =
-      ["# branch.head main", "u UU N... 1 1 1 100644 aaa bbb ccc conflicted.ts"].join(
-        "\0",
-      ) + "\0";
+    const out = `${["# branch.head main", "u UU N... 1 1 1 100644 aaa bbb ccc conflicted.ts"].join("\0")}\0`;
     const parsed = parseStatusPorcelainV2(out);
-    expect(parsed.workingTree.conflicted.map((f) => f.path)).toEqual([
-      "conflicted.ts",
-    ]);
+    expect(parsed.workingTree.conflicted.map((f) => f.path)).toEqual(["conflicted.ts"]);
   });
 });
 

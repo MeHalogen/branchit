@@ -1,12 +1,8 @@
-import { describe, it, expect, afterEach } from "vitest";
-import {
-  createRepo,
-  createBareRemote,
-  type TempRepo,
-} from "./fixtures/gitRepo.js";
-import { detectRepository, GitRepository } from "../src/git/repository.js";
+import { afterEach, describe, expect, it } from "vitest";
 import { switchBranch, switchTrackNew } from "../src/git/actions.js";
 import { GitClient } from "../src/git/client.js";
+import { detectRepository, GitRepository } from "../src/git/repository.js";
+import { createBareRemote, createRepo, type TempRepo } from "./fixtures/gitRepo.js";
 
 const repos: TempRepo[] = [];
 async function makeRepo(...args: Parameters<typeof createRepo>) {
@@ -116,7 +112,7 @@ describe("GitRepository.listBranches", () => {
     const repo = await makeRepo({ initialBranch: "main" });
     await repo.createBranch("feat/in-worktree");
     // Link a second worktree that checks out feat/in-worktree.
-    const wtPath = repo.dir + "-linked";
+    const wtPath = `${repo.dir}-linked`;
     await repo.git(["worktree", "add", wtPath, "feat/in-worktree"]);
     try {
       const detect = await detectRepository(repo.dir);

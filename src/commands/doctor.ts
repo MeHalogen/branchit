@@ -37,5 +37,5 @@ export async function runDoctor(opts: { version: string }): Promise<void> {
   ok("editor", process.env["EDITOR"] ?? process.env["VISUAL"] ?? "(unset)");
   ok("pager", process.env["PAGER"] ?? "(unset)");
 
-  process.stdout.write(lines.join("\n") + "\n");
+  process.stdout.write(`${lines.join("\n")}\n`);
 }

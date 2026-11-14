@@ -1,8 +1,8 @@
-import { describe, it, expect, afterEach } from "vitest";
 import { mkdtemp, rm, writeFile } from "node:fs/promises";
 import { tmpdir } from "node:os";
 import { join } from "node:path";
-import { detectChecks, runChecks, type CheckState } from "../src/workflows/checks.js";
+import { afterEach, describe, expect, it } from "vitest";
+import { type CheckState, detectChecks, runChecks } from "../src/workflows/checks.js";
 
 const dirs: string[] = [];
 afterEach(async () => {

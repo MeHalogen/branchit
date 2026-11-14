@@ -60,10 +60,7 @@ export class GitError extends Error implements GitErrorInfo {
  * anything unrecognized falls through to `unknown_git_error` with raw stderr
  * intact, so we never silently mislabel a failure.
  */
-export function classifyGitStderr(
-  stderr: string,
-  exitCode: number | null,
-): GitErrorKind {
+export function classifyGitStderr(stderr: string, exitCode: number | null): GitErrorKind {
   const s = stderr.toLowerCase();
 
   if (
@@ -72,7 +69,7 @@ export function classifyGitStderr(
   ) {
     return "not_git_repository";
   }
-  if (s.includes("index.lock") || s.includes("unable to create") && s.includes(".lock")) {
+  if (s.includes("index.lock") || (s.includes("unable to create") && s.includes(".lock"))) {
     return "index_locked";
   }
   if (

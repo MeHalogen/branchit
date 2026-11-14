@@ -11,7 +11,7 @@
  * the hash of the last-trusted command set.
  */
 import { createHash } from "node:crypto";
-import { readFileSync, writeFileSync, mkdirSync } from "node:fs";
+import { mkdirSync, readFileSync, writeFileSync } from "node:fs";
 import { join } from "node:path";
 import { configDir } from "./paths.js";
 
@@ -55,7 +55,7 @@ export function trustRepo(root: string, displays: string[]): void {
   store.repos[root] = { hash: hashCommands(displays), commands: displays };
   const dir = configDir();
   mkdirSync(dir, { recursive: true });
-  writeFileSync(trustFilePath(), JSON.stringify(store, null, 2) + "\n", {
+  writeFileSync(trustFilePath(), `${JSON.stringify(store, null, 2)}\n`, {
     mode: 0o600,
   });
 }

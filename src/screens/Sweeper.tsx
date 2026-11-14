@@ -1,13 +1,14 @@
-import React, { useMemo, useState } from "react";
 import { Box, Text, useInput } from "ink";
-import {
-  sweepSummary,
-  type SweepCandidate,
-  type BranchClassification,
-} from "../workflows/sweep.js";
-import type { DeleteSpec } from "../git/actions.js";
+import type React from "react";
+import { useMemo, useState } from "react";
 import { useColor, useTheme } from "../app/theme-context.js";
+import type { DeleteSpec } from "../git/actions.js";
 import { middleTruncate, relativeTime, sanitizeForDisplay } from "../utils/format.js";
+import {
+  type BranchClassification,
+  type SweepCandidate,
+  sweepSummary,
+} from "../workflows/sweep.js";
 
 const CLASS_LABEL: Record<BranchClassification, string> = {
   safe_merged: "merged",
@@ -233,7 +234,7 @@ function CandidateRow(props: {
       </Box>
       <Box flexGrow={1} justifyContent="flex-end">
         <Text color={labelColor}>{label}{c.confidence === "likely" ? "?" : ""}</Text>
-        {rel ? <Text color={color("dim")}>{"   " + rel}</Text> : null}
+        {rel ? <Text color={color("dim")}>{`   ${rel}`}</Text> : null}
       </Box>
     </Box>
   );

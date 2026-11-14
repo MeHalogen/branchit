@@ -63,14 +63,14 @@ Pre-commit check commands (detected from `package.json` scripts) can execute
 arbitrary code — a malicious repo could define `"lint": "rm -rf ~"`. Branchit
 therefore **never runs them automatically**:
 
-- Detection (`src/workflows/checks.ts`) only *suggests* commands; it never runs
+- Detection (`src/workflows/checks.ts`) only _suggests_ commands; it never runs
   them.
 - A repository must be **explicitly trusted** for a specific command set before
   execution. Trust is stored hash-keyed by repo root under the user config dir
   (`src/config/trust.ts`); if the command set later changes, the hash no longer
   matches and Branchit **re-prompts**.
-- The trust prompt shows the exact commands and offers *run once* (no
-  persistence), *trust this repository*, *skip checks*, or *cancel*.
+- The trust prompt shows the exact commands and offers _run once_ (no
+  persistence), _trust this repository_, _skip checks_, or _cancel_.
 - Checks execute with argv + `shell:false`, block the commit on first failure,
   and can be cancelled. "Commit anyway" is a separate, explicit choice. Git's
   own hooks still run on the real commit and are never bypassed.

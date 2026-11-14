@@ -70,11 +70,7 @@ function hostKind(host: string): HostKind {
  * Build a URL that opens a new pull/merge request comparing base...head.
  * Returns null for hosts where we don't have a reliable format.
  */
-export function buildCompareUrl(
-  id: RepoIdentity,
-  base: string,
-  head: string,
-): string | null {
+export function buildCompareUrl(id: RepoIdentity, base: string, head: string): string | null {
   const b = encodeURIComponent(base);
   const h = encodeURIComponent(head);
   switch (id.host) {

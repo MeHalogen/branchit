@@ -8,14 +8,9 @@
  *   - failures are classified into typed {@link GitError}s while preserving raw
  *     stderr for a "show details" affordance.
  */
-import { execa, type ExecaError } from "execa";
-import { type GitCommand } from "./command.js";
-import {
-  GitError,
-  classifyGitStderr,
-  defaultMessageForKind,
-  type GitErrorKind,
-} from "./errors.js";
+import { type ExecaError, execa } from "execa";
+import type { GitCommand } from "./command.js";
+import { classifyGitStderr, defaultMessageForKind, GitError, type GitErrorKind } from "./errors.js";
 
 export interface GitCommandResult {
   ok: boolean;
@@ -88,9 +83,7 @@ export class GitClient {
       });
       const res = await sub;
       const durationMs = Math.round(performance.now() - start);
-      this.onDebug?.(
-        `${command.display} -> exit ${res.exitCode} (${durationMs}ms)`,
-      );
+      this.onDebug?.(`${command.display} -> exit ${res.exitCode} (${durationMs}ms)`);
 
       if (res.exitCode === 0) {
         return {
@@ -104,7 +97,14 @@ export class GitClient {
       }
 
       const kind = classifyGitStderr(res.stderr ?? "", res.exitCode ?? null);
-      return this.failure(command, res.stdout ?? "", res.stderr ?? "", res.exitCode ?? null, durationMs, kind);
+      return this.failure(
+        command,
+        res.stdout ?? "",
+        res.stderr ?? "",
+        res.exitCode ?? null,
+        durationMs,
+        kind,
+      );
     } catch (err) {
       const durationMs = Math.round(performance.now() - start);
       const e = err as ExecaError;

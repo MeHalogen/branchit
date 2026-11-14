@@ -96,10 +96,7 @@ export interface ThemeContextValue {
   noColor: boolean;
 }
 
-export function resolveTheme(opts: {
-  noColor: boolean;
-  ascii: boolean;
-}): ThemeContextValue {
+export function resolveTheme(opts: { noColor: boolean; ascii: boolean }): ThemeContextValue {
   return {
     theme: opts.noColor ? noColorTheme : colorTheme,
     glyphs: opts.ascii ? asciiGlyphs : unicodeGlyphs,
