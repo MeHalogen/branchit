@@ -5,7 +5,7 @@ import type { RepoData } from "../app/loadRepo.js";
 import { orderedLocalBranches } from "../app/loadRepo.js";
 import { useColor, useTheme } from "../app/theme-context.js";
 import { BranchRow } from "../components/BranchRow.js";
-import { COMMANDS, type Command } from "../keys/registry.js";
+import { COMMANDS, type Command, shortcutFor } from "../keys/registry.js";
 import {
   abbreviateHome,
   repoNameFromRoot,
@@ -145,7 +145,7 @@ export function Dashboard(props: { data: RepoData; width: number }) {
             return (
               <Box key={cmd.id} width={Math.floor(innerWidth / 2)}>
                 <Text color={color("primary")} bold>
-                  [{cmd.shortcut}]
+                  [{shortcutFor(cmd.id)}]
                 </Text>
                 <Text color={planned ? color("dim") : color("text")}>
                   {" "}

@@ -18,11 +18,17 @@ export async function launchTui(
   cfg: ResolvedConfig,
   flags: Set<string>,
 ): Promise<void> {
+  const { resolveKeymap, installKeymap } = await import("./keys/registry.js");
+  const keymap = resolveKeymap(cfg.keys);
+  if (keymap.errors.length) process.stderr.write(`${keymap.errors.join("\n")}\n`);
+  installKeymap(keymap.shortcuts);
+
   const data = await loadRepoData(git);
   // CLI flags override config; config overrides built-in defaults.
   const themeValue = resolveTheme({
-    noColor: flags.has("no-color") || Boolean(process.env["NO_COLOR"]) || cfg.ui.theme === "none",
+    noColor: flags.has("no-color") || Boolean(process.env["NO_COLOR"]),
     ascii: flags.has("ascii") || process.env["TERM"] === "dumb" || !cfg.ui.icons,
+    name: cfg.ui.theme,
   });
   const commandPreview = flags.has("no-preview") ? false : cfg.ui.commandPreview;
 

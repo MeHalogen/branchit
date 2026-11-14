@@ -1,6 +1,6 @@
 {
   "name": "branchit",
-  "version": "0.5.0",
+  "version": "0.6.0",
   "description": "Git flow without the command flow. A fast, safe, keyboard-first TUI for everyday Git workflows.",
   "license": "MIT",
   "type": "module",
@@ -31,7 +31,8 @@
     "prepublishOnly": "npm run lint && npm run typecheck && npm test && npm run build",
     "demo:gif": "npm run build && vhs demo.tape",
     "lint": "biome check .",
-    "format": "biome check --write ."
+    "format": "biome check --write .",
+    "bench": "BRANCHIT_BENCH=1 vitest run test/perf.integration.test.ts"
   },
   "dependencies": {
     "execa": "^9.5.1",

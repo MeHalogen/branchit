@@ -3,6 +3,30 @@
 All notable changes to Branchit are documented here. This project follows
 [Semantic Versioning](https://semver.org/) and [Conventional Commits](https://www.conventionalcommits.org/).
 
+## 0.6.0 — Polish
+
+### Added
+- **Themes**: `[ui] theme = "catppuccin" | "tokyo-night" | "gruvbox"` alongside
+  `default` and `none`. `NO_COLOR` still always wins.
+- **Animated progress**: a real spinner with elapsed time for fetch, push,
+  pull and running checks (it was a static frame).
+- **Key overrides**: `[keys] sweep = "x"` rebinds dashboard keys by command
+  name; collisions, unknown names and reserved keys are reported at startup
+  and fall back to the defaults. Help, hints and the palette show the live keys.
+- **Optional AI commit message**: set `[ai] command` to any program that reads
+  a diff on stdin and prints a message, then press `ctrl+g` in the commit flow
+  to fill type, scope, subject and body. Off by default, no bundled provider,
+  no API keys handled by Branchit, no shell, and the same explicit trust
+  prompt as pre-commit checks.
+
+### Changed
+- **Large repositories**: the sweep scan runs with bounded parallelism (2,000
+  branches: 2.0 s → 0.74 s), and the sweeper renders a window around the
+  cursor instead of every row. `npm run bench` checks the 1 s budget.
+- Configured commands (checks and `[ai]`) now honour quotes and backslash
+  escapes when split into arguments, still without invoking a shell.
+- The status bar wraps instead of squeezing key labels on narrow terminals.
+
 ## 0.5.0 — Worktrees for the parallel-agent era
 
 ### Added

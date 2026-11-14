@@ -148,8 +148,73 @@ export const COMMANDS: Command[] = [
   },
 ];
 
+/** Keys the dashboard handles itself; they cannot be rebound. */
+export const RESERVED_KEYS = new Set([":", "?", "q"]);
+
+/** Short config name for a command: "dashboard.sweep" -> "sweep". */
+export function shortName(id: CommandId): string {
+  return id.slice(id.indexOf(".") + 1);
+}
+
+/**
+ * Apply `[keys]` overrides ({ sweep: "x" }) to the default shortcuts.
+ * Returns the effective map plus human-readable errors; any error leaves the
+ * defaults in place for that command.
+ */
+export function resolveKeymap(overrides: Record<string, string>): {
+  shortcuts: Map<CommandId, string>;
+  errors: string[];
+} {
+  const shortcuts = new Map<CommandId, string>();
+  for (const c of COMMANDS) if (c.shortcut) shortcuts.set(c.id, c.shortcut);
+  const errors: string[] = [];
+  const byShort = new Map(COMMANDS.map((c) => [shortName(c.id), c.id] as const));
+  for (const [name, key] of Object.entries(overrides)) {
+    const id = byShort.get(name);
+    if (!id) {
+      errors.push(`[keys] unknown command '${name}' (known: ${[...byShort.keys()].join(", ")})`);
+      continue;
+    }
+    if ([...key].length !== 1) {
+      errors.push(`[keys] ${name}: use a single key, got '${key}'`);
+      continue;
+    }
+    if (RESERVED_KEYS.has(key)) {
+      errors.push(`[keys] ${name}: '${key}' is reserved`);
+      continue;
+    }
+    shortcuts.set(id, key);
+  }
+  const seen = new Map<string, CommandId>();
+  for (const [id, key] of shortcuts) {
+    const other = seen.get(key);
+    if (other) {
+      errors.push(`[keys] '${key}' collides: ${shortName(other)} and ${shortName(id)}`);
+      // Fall back to defaults for both so the app stays usable.
+      for (const c of COMMANDS) {
+        if ((c.id === id || c.id === other) && c.shortcut) shortcuts.set(c.id, c.shortcut);
+      }
+    } else seen.set(key, id);
+  }
+  return { shortcuts, errors };
+}
+
+let activeShortcuts: Map<CommandId, string> = resolveKeymap({}).shortcuts;
+
+/** Install an effective keymap (from `resolveKeymap`) for this process. */
+export function installKeymap(shortcuts: Map<CommandId, string>): void {
+  activeShortcuts = shortcuts;
+}
+
+export function shortcutFor(id: CommandId): string | undefined {
+  return activeShortcuts.get(id);
+}
+
 export function commandByShortcut(key: string): Command | undefined {
-  return COMMANDS.find((c) => c.shortcut === key);
+  for (const [id, k] of activeShortcuts) {
+    if (k === key) return COMMANDS.find((c) => c.id === id);
+  }
+  return undefined;
 }
 
 /** Assert at module load that no two commands share a dashboard shortcut. */

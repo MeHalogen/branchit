@@ -52,6 +52,14 @@ export function Sweeper(props: {
   const clamped = Math.min(cursor, Math.max(0, selectable.length - 1));
   const current = selectable[clamped];
 
+  // Virtualize: render a window of rows around the cursor so repositories
+  // with thousands of branches stay responsive.
+  const WINDOW = 14;
+  const winStart = Math.max(0, Math.min(clamped - Math.floor(WINDOW / 2), selectable.length - WINDOW));
+  const visible = new Set(selectable.slice(winStart, winStart + WINDOW).map((c) => c.branch.id));
+  const hiddenAbove = winStart;
+  const hiddenBelow = Math.max(0, selectable.length - (winStart + WINDOW));
+
   const toggle = (c: SweepCandidate | undefined) => {
     if (!c || c.deletionMode === "none") return;
     setSelected((prev) => {
@@ -110,9 +118,15 @@ export function Sweeper(props: {
         </Box>
       ) : null}
 
-      {safe.length > 0 ? (
-        <Section title="SAFE TO DELETE" color={color("success")}>
-          {safe.map((c) => (
+      {hiddenAbove > 0 ? (
+        <Text color={color("dim")}>
+          {"  "}↑ {hiddenAbove} more
+        </Text>
+      ) : null}
+
+      {safe.some((c) => visible.has(c.branch.id)) ? (
+        <Section title={`SAFE TO DELETE (${safe.length})`} color={color("success")}>
+          {safe.filter((c) => visible.has(c.branch.id)).map((c) => (
             <CandidateRow
               key={c.branch.id}
               c={c}
@@ -124,9 +138,9 @@ export function Sweeper(props: {
         </Section>
       ) : null}
 
-      {review.length > 0 ? (
-        <Section title="NEEDS REVIEW" color={color("warning")}>
-          {review.map((c) => (
+      {review.some((c) => visible.has(c.branch.id)) ? (
+        <Section title={`NEEDS REVIEW (${review.length})`} color={color("warning")}>
+          {review.filter((c) => visible.has(c.branch.id)).map((c) => (
             <CandidateRow
               key={c.branch.id}
               c={c}
@@ -138,7 +152,13 @@ export function Sweeper(props: {
         </Section>
       ) : null}
 
-      {prot.length > 0 ? (
+      {hiddenBelow > 0 ? (
+        <Text color={color("dim")}>
+          {"  "}↓ {hiddenBelow} more
+        </Text>
+      ) : null}
+
+      {prot.length > 0 && hiddenBelow === 0 ? (
         <Section title="PROTECTED" color={color("dim")}>
           {prot.slice(0, 6).map((c) => (
             <Box key={c.branch.id}>

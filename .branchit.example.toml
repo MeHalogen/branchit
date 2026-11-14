@@ -9,7 +9,7 @@
 command_preview = true
 # Use Unicode glyphs (false = ASCII fallback).
 icons = true
-# "default" = colored, "none" = no color.
+# Palette: "default", "catppuccin", "tokyo-night", "gruvbox", or "none" (no color).
 theme = "default"
 
 [branches]
@@ -40,3 +40,20 @@ require_scope = false
 # them (and re-prompts if the set changes). Leave unset to auto-detect known
 # package.json scripts instead.
 # commands = ["npm run typecheck", "npm test"]
+
+[worktrees]
+# Where `t` → add puts new worktrees. Relative to the repository root unless
+# absolute; {repo} and {branch} are substituted ("feat/x" becomes "feat-x").
+# root = "../{repo}-wt/{branch}"
+
+[keys]
+# Rebind dashboard keys by command name. ":", "?" and "q" are reserved.
+# Names: switchBranch newBranch commit sweep fetch prepare workingTree sync
+#        stash worktrees undo recover search refresh help quit
+# sweep = "x"
+
+[ai]
+# Optional: a program that reads the staged diff on stdin and prints a commit
+# message (first line = subject). Runs without a shell, only after you trust
+# it, and never ships a provider or touches API keys. ctrl+g in the commit flow.
+# command = "llm -m claude-sonnet-5-5 -s 'Write a conventional commit message for this diff.'"
