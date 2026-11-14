@@ -8,7 +8,7 @@
 
 import { mkdir, mkdtemp, rm, writeFile } from "node:fs/promises";
 import { tmpdir } from "node:os";
-import { join } from "node:path";
+import { dirname, join } from "node:path";
 import { execa } from "execa";
 
 export class TempRepo {
@@ -30,8 +30,7 @@ export class TempRepo {
 
   async writeFileAt(relPath: string, content: string): Promise<void> {
     const abs = join(this.dir, relPath);
-    const slash = abs.lastIndexOf("/");
-    if (slash > -1) await mkdir(abs.slice(0, slash), { recursive: true });
+    await mkdir(dirname(abs), { recursive: true });
     await writeFile(abs, content);
   }
 
