@@ -1,5 +1,5 @@
 import { Box, Text, useApp, useInput, useStdout } from "ink";
-import { useCallback, useEffect, useMemo, useState } from "react";
+import { useCallback, useEffect, useMemo, useRef, useState } from "react";
 import { type ConfirmAction, ConfirmModal } from "../components/ConfirmModal.js";
 import { type Hint, StatusBar } from "../components/StatusBar.js";
 import { Toast, type ToastState } from "../components/Toast.js";
@@ -7,14 +7,24 @@ import { defaultConfig, type ResolvedConfig } from "../config/schema.js";
 import { markOnboarded } from "../config/state.js";
 import { isTrusted, trustRepo } from "../config/trust.js";
 import { type DeleteSpec, stagePaths, unstagePaths } from "../git/actions.js";
+import { type FileDiff, hunkPatch, parseDiff } from "../git/diff.js";
 import type { Branch, WorkingTreeState } from "../git/models.js";
 import { type ReflogEntry, readReflog, reflogPreview } from "../git/recent.js";
 import type { GitRepository } from "../git/repository.js";
+import { listStashes, type StashEntry, stashCommands, stashPatch } from "../git/stash.js";
 import { fetchRemote } from "../git/sync.js";
+import {
+  applyHunk,
+  fileDiffText,
+  type PullMode,
+  pullConflictState,
+  untrackedPreview,
+  workspaceCommands,
+} from "../git/workspace.js";
 import { Journal, type JournalEntry } from "../journal/journal.js";
 import { Recorder } from "../journal/record.js";
 import { executeUndo, planUndo, readUndoContext, type UndoPlan } from "../journal/undo.js";
-import { type CommandId, commandByShortcut } from "../keys/registry.js";
+import { COMMANDS, type CommandId, commandByShortcut } from "../keys/registry.js";
 import { BranchSwitcher } from "../screens/BranchSwitcher.js";
 import { CommandPalette } from "../screens/CommandPalette.js";
 import { CommitFlow } from "../screens/CommitFlow.js";
@@ -23,10 +33,13 @@ import { HelpOverlay } from "../screens/HelpOverlay.js";
 import { NewBranch } from "../screens/NewBranch.js";
 import { PrReadiness } from "../screens/PrReadiness.js";
 import { RecoverScreen } from "../screens/RecoverScreen.js";
+import { type SearchItem, SearchOverlay } from "../screens/SearchOverlay.js";
+import { StashScreen } from "../screens/StashScreen.js";
 import { Sweeper } from "../screens/Sweeper.js";
 import { UndoScreen } from "../screens/UndoScreen.js";
 import { Welcome } from "../screens/Welcome.js";
-import { sanitizeForDisplay } from "../utils/format.js";
+import { type FileRow, WorkingTree } from "../screens/WorkingTree.js";
+import { relativeTime, sanitizeForDisplay } from "../utils/format.js";
 import { openUrl } from "../utils/open-url.js";
 import { commandsFromStrings, detectChecks, runChecks } from "../workflows/checks.js";
 import { gatherPrReadiness, type PrContext } from "../workflows/pr.js";
@@ -50,6 +63,9 @@ type View =
   | "pr"
   | "undo"
   | "recover"
+  | "workingTree"
+  | "search"
+  | "stash"
   | "welcome";
 
 interface ModalState {
@@ -70,6 +86,10 @@ const IMPLEMENTED_COMMANDS: ReadonlySet<CommandId> = new Set([
   "dashboard.prepare",
   "global.undo",
   "global.recover",
+  "global.search",
+  "dashboard.workingTree",
+  "dashboard.sync",
+  "dashboard.stash",
   "global.refresh",
   "global.help",
   "global.quit",
@@ -105,10 +125,15 @@ export function App(props: {
     history: JournalEntry[];
   } | null>(null);
   const [reflog, setReflog] = useState<ReflogEntry[] | null>(null);
+  const [wtRevision, setWtRevision] = useState(0);
+  const [searchItems, setSearchItems] = useState<SearchItem[] | null>(null);
+  const [stashes, setStashes] = useState<StashEntry[] | null>(null);
 
   // Every mutation goes through the recorder so it can be undone later.
   const journal = useMemo(() => Journal.forGitDir(git.gitDir), [git.gitDir]);
   const rec = useMemo(() => new Recorder(git, journal), [git, journal]);
+  // Lets search (defined before runCommand) run commands without a cycle.
+  const runCommandRef = useRef<((id: CommandId) => void) | null>(null);
 
   // Pre-commit checks: explicit config commands take precedence; otherwise they
   // are detected from the repo manifest. Advisory only — never run without
@@ -133,10 +158,22 @@ export function App(props: {
     return () => clearTimeout(t);
   }, [toast]);
 
+  const dataRef = useRef(data);
+  dataRef.current = data;
+
+  /** Re-read the repository. A failed refresh keeps the last snapshot and says so. */
   const reload = useCallback(async () => {
-    const fresh = await loadRepoData(git);
-    setData(fresh);
-    return fresh;
+    try {
+      const fresh = await loadRepoData(git);
+      setData(fresh);
+      return fresh;
+    } catch (e) {
+      setToast({
+        kind: "error",
+        message: `Could not refresh: ${e instanceof Error ? e.message : String(e)}`,
+      });
+      return dataRef.current;
+    }
   }, [git]);
 
   const notify = useCallback((t: ToastState) => setToast(t), []);
@@ -557,6 +594,381 @@ export function App(props: {
     [notify],
   );
 
+  // ── Working tree (w) ─────────────────────────────────────────────────────
+  const loadWtDiff = useCallback(
+    async (row: FileRow) => {
+      if (row.kind === "untracked") {
+        return { file: null, untracked: await untrackedPreview(git.root, row.path) };
+      }
+      const text = await fileDiffText(git.client, row.path, row.kind === "staged");
+      return { file: parseDiff(text)[0] ?? null };
+    },
+    [git],
+  );
+
+  const afterWtChange = useCallback(async () => {
+    await reload();
+    setWtRevision((n) => n + 1);
+  }, [reload]);
+
+  const onWtToggle = useCallback(
+    async (row: FileRow) => {
+      const res =
+        row.kind === "staged"
+          ? await unstagePaths(git.client, [row.path])
+          : await stagePaths(git.client, [row.path]);
+      if (!res.ok) {
+        const t = toastForError(res.error);
+        notify({ kind: "error", message: t.message, detail: t.detail });
+      }
+      await afterWtChange();
+    },
+    [afterWtChange, git, notify],
+  );
+
+  const onWtHunk = useCallback(
+    async (row: FileRow, file: FileDiff, index: number) => {
+      const res = await applyHunk(
+        git.client,
+        hunkPatch(file, index),
+        row.kind === "staged" ? "unstage" : "stage",
+      );
+      if (!res.ok) {
+        const t = toastForError(res.error);
+        notify({ kind: "error", message: `Could not apply hunk: ${t.message}`, detail: t.detail });
+      }
+      await afterWtChange();
+    },
+    [afterWtChange, git, notify],
+  );
+
+  const onWtDiscard = useCallback(
+    (row: FileRow) => {
+      setModal({
+        title: `Discard changes to ${row.path}?`,
+        lines: [
+          row.kind === "untracked"
+            ? "The untracked file is removed from the working tree."
+            : "Working-tree changes to this file are removed.",
+          "They are stashed first, so u on the dashboard (or branchit undo) brings them back.",
+        ],
+        commandPreview: [
+          workspaceCommands.stashPaths(`branchit: discard ${row.path}`, [row.path]).display,
+        ],
+        danger: true,
+        actions: [{ key: "enter", label: "Discard", tone: "danger" }],
+        onAction: async (key) => {
+          setModal(null);
+          if (key !== "enter") return;
+          const res = await rec.discard([row.path]);
+          if (res.ok) notify({ kind: "success", message: `Discarded ${row.path} (u to undo)` });
+          else {
+            const t = toastForError(res.error);
+            notify({ kind: "error", message: t.message, detail: t.detail });
+          }
+          await afterWtChange();
+        },
+      });
+    },
+    [afterWtChange, notify, rec],
+  );
+
+  // ── Sync (y) ─────────────────────────────────────────────────────────────
+  const runPull = useCallback(
+    async (mode: PullMode) => {
+      setBusy("Pulling…");
+      const res = await rec.pull(mode);
+      if (res.ok) {
+        setBusy(null);
+        await reload();
+        notify({ kind: "success", message: `Pulled (${mode}) — u to undo` });
+        return;
+      }
+      const conflict = await pullConflictState(git);
+      setBusy(null);
+      await reload();
+      if (!conflict) {
+        const t = toastForError(res.error);
+        notify({
+          kind: "error",
+          message: mode === "ff-only" ? `${t.message} — try merge or rebase` : t.message,
+          detail: t.detail,
+        });
+        return;
+      }
+      setModal({
+        title: `Pull stopped: ${conflict.files.length} conflicted file(s)`,
+        lines: [
+          `A ${conflict.operation} is in progress. Conflicts in:`,
+          ...conflict.files.slice(0, 8).map((f) => `  ${f}`),
+          "Abort to return exactly to where you were, or keep it and resolve in your editor.",
+        ],
+        commandPreview: [conflict.abort.display],
+        danger: true,
+        actions: [
+          { key: "a", label: "Abort (back to before)", tone: "primary" },
+          { key: "k", label: "Keep and resolve myself" },
+        ],
+        onAction: async (key) => {
+          setModal(null);
+          if (key === "a") {
+            const r = await git.client.run(conflict.abort);
+            await reload();
+            notify(
+              r.ok
+                ? { kind: "success", message: "Aborted; back where you started" }
+                : { kind: "error", message: `Abort failed: ${r.error?.message ?? r.stderr}` },
+            );
+          } else {
+            notify({
+              kind: "info",
+              message: `Resolve, git add the files, then git ${conflict.operation === "merge" ? "commit" : "rebase --continue"}`,
+            });
+          }
+        },
+      });
+    },
+    [git, notify, rec, reload],
+  );
+
+  const openSync = useCallback(() => {
+    const current = data.branches.find((b) => b.kind === "local" && b.isCurrent);
+    const up = current?.upstream;
+    if (!current || !up || up.gone) {
+      notify({
+        kind: "warning",
+        message: up?.gone ? "Upstream branch was deleted" : "No upstream to pull from — push first (p)",
+      });
+      return;
+    }
+    if (!data.status.workingTree.isClean) {
+      notify({
+        kind: "warning",
+        message: "Pull needs a clean working tree: commit (c), stash (z) or discard (w) first",
+      });
+      return;
+    }
+    const diverged = up.ahead > 0 && up.behind > 0;
+    setModal({
+      title: `Pull ${up.ref} into ${current.name}`,
+      lines: [
+        `${up.behind} incoming, ${up.ahead} local commit(s) not on ${up.ref}.`,
+        up.behind === 0
+          ? "Already up to date with the last fetch (f fetches first)."
+          : diverged
+            ? "Histories diverged: fast-forward is impossible; choose merge or rebase."
+            : "Fast-forward only is the safe default.",
+      ],
+      commandPreview: [
+        workspaceCommands.pull("ff-only").display,
+        workspaceCommands.pull("merge").display,
+        workspaceCommands.pull("rebase").display,
+      ],
+      actions: [
+        ...(diverged ? [] : [{ key: "f", label: "Fast-forward only", tone: "primary" as const }]),
+        { key: "m", label: "Merge" },
+        { key: "r", label: "Rebase" },
+      ],
+      onAction: (key) => {
+        setModal(null);
+        const mode: PullMode | null =
+          key === "f" ? "ff-only" : key === "m" ? "merge" : key === "r" ? "rebase" : null;
+        if (mode) void runPull(mode);
+      },
+    });
+  }, [data.branches, data.status.workingTree.isClean, notify, runPull]);
+
+  // ── Stash manager (z) ────────────────────────────────────────────────────
+  const refreshStashes = useCallback(async () => {
+    setStashes(await listStashes(git.client));
+  }, [git]);
+
+  const openStash = useCallback(async () => {
+    await refreshStashes();
+    setView("stash");
+  }, [refreshStashes]);
+
+  const loadStashPatch = useCallback((e: StashEntry) => stashPatch(git.client, e.ref), [git]);
+
+  const runStashCommand = useCallback(
+    async (command: { args: string[]; display: string }, success: string) => {
+      setBusy(`${command.display}…`);
+      const res = await git.client.run(command);
+      setBusy(null);
+      await reload();
+      await refreshStashes();
+      if (res.ok) notify({ kind: "success", message: success });
+      else {
+        const t = toastForError(res.error!);
+        notify({ kind: "error", message: t.message, detail: t.detail });
+      }
+    },
+    [git, notify, refreshStashes, reload],
+  );
+
+  const onStashDrop = useCallback(
+    (e: StashEntry) => {
+      setModal({
+        title: `Drop ${e.ref}?`,
+        lines: [e.message, "u on the dashboard (or branchit undo) can store it back."],
+        commandPreview: [stashCommands.drop(e.ref).display],
+        danger: true,
+        actions: [{ key: "enter", label: "Drop", tone: "danger" }],
+        onAction: async (key) => {
+          setModal(null);
+          if (key !== "enter") return;
+          const res = await rec.stashDrop(e);
+          await refreshStashes();
+          notify(
+            res.ok
+              ? { kind: "success", message: `Dropped ${e.ref} (u to undo)` }
+              : { kind: "error", message: toastForError(res.error).message },
+          );
+        },
+      });
+    },
+    [notify, rec, refreshStashes],
+  );
+
+  const onStashBranch = useCallback(
+    (e: StashEntry) => {
+      const name = `stash/${e.sha.slice(0, 7)}`;
+      setModal({
+        title: "Turn this stash into a branch?",
+        lines: [
+          `Branch ${name} is created at the commit the stash was made on,`,
+          "the stash is applied there, then dropped.",
+        ],
+        commandPreview: [stashCommands.branch(name, e.ref).display],
+        actions: [{ key: "enter", label: "Create branch", tone: "primary" }],
+        onAction: async (key) => {
+          setModal(null);
+          if (key !== "enter") return;
+          const res = await rec.stashBranch(name, e);
+          await reload();
+          await refreshStashes();
+          if (res.ok) {
+            setView("dashboard");
+            notify({ kind: "success", message: `Switched to ${name} with the stash applied` });
+          } else {
+            const t = toastForError(res.error);
+            notify({ kind: "error", message: t.message, detail: t.detail });
+          }
+        },
+      });
+    },
+    [notify, rec, refreshStashes, reload],
+  );
+
+  // ── Global search (/) ────────────────────────────────────────────────────
+  const openSearch = useCallback(async () => {
+    setBusy("Indexing…");
+    const [log, files] = await Promise.all([
+      git.client.run({
+        args: ["log", "-n", "300", "--format=%H%x1f%h%x1f%s%x1f%cI"],
+        display: "git log -n 300",
+      }),
+      git.client.run({ args: ["ls-files", "-z"], display: "git ls-files" }),
+    ]);
+    setBusy(null);
+    const items: SearchItem[] = [];
+    for (const b of data.branches) {
+      items.push({
+        kind: "branch",
+        name: b.name,
+        value: b.fullRef,
+        detail: b.kind === "remote" ? "remote" : b.isCurrent ? "current" : undefined,
+        recencyRank: data.recentRanks.get(b.name),
+      });
+    }
+    for (const c of COMMANDS) {
+      if (!IMPLEMENTED_COMMANDS.has(c.id) || c.id === "global.search") continue;
+      items.push({ kind: "command", name: c.title, value: c.id, detail: c.shortcut });
+    }
+    if (log.ok) {
+      for (const line of log.stdout.split("\n")) {
+        const [sha, short, subject, at] = line.split("\x1f");
+        if (sha && subject) {
+          items.push({ kind: "commit", name: subject, value: sha, detail: `${short} ${relativeTime(at ?? "")}` });
+        }
+      }
+    }
+    if (files.ok) {
+      for (const f of files.stdout.split("\0").slice(0, 20000)) {
+        if (f) items.push({ kind: "file", name: f, value: f });
+      }
+    }
+    setSearchItems(items);
+    setView("search");
+  }, [data.branches, data.recentRanks, git]);
+
+  const [wtFocusPath, setWtFocusPath] = useState<string | null>(null);
+
+  const onSearchPick = useCallback(
+    async (item: SearchItem) => {
+      setSearchItems(null);
+      setView("dashboard");
+      if (item.kind === "branch") {
+        const b = data.branches.find((x) => x.fullRef === item.value);
+        if (b) onSelectBranch(b);
+        return;
+      }
+      if (item.kind === "command") {
+        runCommandRef.current?.(item.value as CommandId);
+        return;
+      }
+      if (item.kind === "file") {
+        const wt = data.status.workingTree;
+        const changed = [...wt.staged, ...wt.unstaged, ...wt.untracked, ...wt.conflicted].some(
+          (f) => f.path === item.value,
+        );
+        if (changed) {
+          setWtFocusPath(item.value);
+          setView("workingTree");
+          return;
+        }
+        const last = await git.client.run({
+          args: ["log", "-1", "--format=%h %s%n%an · %ar", "--", item.value],
+          display: `git log -1 -- ${item.value}`,
+        });
+        setModal({
+          title: item.value,
+          lines: ["No uncommitted changes.", ...(last.ok ? last.stdout.trim().split("\n") : [])],
+          actions: [{ key: "enter", label: "Close" }],
+          onAction: () => setModal(null),
+        });
+        return;
+      }
+      // Commit: show it and offer to restore it as a branch.
+      const show = await git.client.run({
+        args: ["show", "--stat", "--format=%h %s%n%an · %ar", "--no-color", item.value],
+        display: `git show --stat ${item.value}`,
+      });
+      const name = `recovered/${item.value.slice(0, 7)}`;
+      setModal({
+        title: `Commit ${item.value.slice(0, 7)}`,
+        lines: show.ok ? show.stdout.trim().split("\n").slice(0, 14) : [item.name],
+        commandPreview: [`git branch ${name} ${item.value}`],
+        actions: [
+          { key: "b", label: "Branch from here" },
+          { key: "enter", label: "Close" },
+        ],
+        onAction: async (key) => {
+          setModal(null);
+          if (key !== "b") return;
+          const res = await rec.createBranchAt(name, item.value);
+          await reload();
+          notify(
+            res.ok
+              ? { kind: "success", message: `Created ${name}` }
+              : { kind: "error", message: toastForError(res.error).message },
+          );
+        },
+      });
+    },
+    [data.branches, data.status.workingTree, git, notify, onSelectBranch, rec, reload],
+  );
+
   const runCommand = useCallback(
     (id: CommandId) => {
       switch (id) {
@@ -577,6 +989,19 @@ export function App(props: {
           break;
         case "dashboard.prepare":
           void openPr();
+          break;
+        case "dashboard.workingTree":
+          setWtFocusPath(null);
+          setView("workingTree");
+          break;
+        case "dashboard.sync":
+          openSync();
+          break;
+        case "dashboard.stash":
+          void openStash();
+          break;
+        case "global.search":
+          void openSearch();
           break;
         case "global.undo":
           void openUndo();
@@ -602,8 +1027,22 @@ export function App(props: {
           });
       }
     },
-    [exit, notify, onFetch, openSweeper, openCommit, openPr, openUndo, openRecover, reload],
+    [
+      exit,
+      notify,
+      onFetch,
+      openSweeper,
+      openCommit,
+      openPr,
+      openUndo,
+      openRecover,
+      openSync,
+      openStash,
+      openSearch,
+      reload,
+    ],
   );
+  runCommandRef.current = runCommand;
 
   const isAvailable = useCallback(
     (id: CommandId): { ok: boolean; reason?: string } => {
@@ -655,6 +1094,8 @@ export function App(props: {
     { key: "c", label: "commit" },
     { key: "s", label: "sweep" },
     { key: "u", label: "undo" },
+    { key: "w", label: "files" },
+    { key: "/", label: "search" },
     { key: ":", label: "commands" },
     { key: "?", label: "help" },
     { key: "q", label: "quit" },
@@ -787,6 +1228,51 @@ export function App(props: {
             setReflog(null);
             setView("dashboard");
           }}
+        />
+      ) : null}
+
+      {view === "workingTree" ? (
+        <WorkingTree
+          workingTree={data.status.workingTree}
+          width={width}
+          loadDiff={loadWtDiff}
+          onToggle={(row) => void onWtToggle(row)}
+          onHunk={(row, file, i) => void onWtHunk(row, file, i)}
+          onDiscard={onWtDiscard}
+          onClose={() => setView("dashboard")}
+          active={modal === null && !busy}
+          revision={wtRevision}
+          initialPath={wtFocusPath}
+        />
+      ) : null}
+
+      {view === "search" && searchItems ? (
+        <SearchOverlay
+          items={searchItems}
+          width={width}
+          onPick={(item) => void onSearchPick(item)}
+          onClose={() => {
+            setSearchItems(null);
+            setView("dashboard");
+          }}
+          active={modal === null}
+        />
+      ) : null}
+
+      {view === "stash" && stashes ? (
+        <StashScreen
+          stashes={stashes}
+          width={width}
+          loadPatch={loadStashPatch}
+          onApply={(e) => void runStashCommand(stashCommands.apply(e.ref), `Applied ${e.ref}`)}
+          onPop={(e) => void runStashCommand(stashCommands.pop(e.ref), `Popped ${e.ref}`)}
+          onDrop={onStashDrop}
+          onBranch={onStashBranch}
+          onClose={() => {
+            setStashes(null);
+            setView("dashboard");
+          }}
+          active={modal === null && !busy}
         />
       ) : null}
 

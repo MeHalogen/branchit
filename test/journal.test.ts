@@ -158,4 +158,45 @@ describe("planUndo", () => {
     expect(plan.ok).toBe(false);
     expect(!plan.ok && plan.reason).toContain("git revert");
   });
+
+  it("discard: pops the stash that holds the discarded changes", () => {
+    const plan = planUndo(
+      { id: "1", at, op: "discard", paths: ["a"], stashSha: "st" },
+      ctx({ stashShas: ["st"] }),
+    );
+    expect(plan.ok && plan.commands.map((c) => c.display)).toEqual([
+      "git stash pop --index 'stash@{0}'",
+    ]);
+    expect(planUndo({ id: "1", at, op: "discard", paths: ["a"], stashSha: "st" }, ctx()).ok).toBe(
+      false,
+    );
+  });
+
+  it("pull: resets with --keep only while HEAD is still the pulled tip", () => {
+    const e = {
+      id: "1",
+      at,
+      op: "pull" as const,
+      branch: "main",
+      mode: "ff-only" as const,
+      before: "c1",
+      after: "c2",
+    };
+    const plan = planUndo(e, ctx());
+    expect(plan.ok && plan.commands.map((c) => c.display)).toEqual(["git reset --keep c1"]);
+    expect(planUndo(e, ctx({ headSha: "c9" })).ok).toBe(false);
+  });
+
+  it("stash-drop: stores the dropped stash back", () => {
+    const e = { id: "1", at, op: "stash-drop" as const, sha: "st", message: "On main: wip" };
+    const plan = planUndo(e, ctx());
+    expect(plan.ok && plan.commands[0]?.args).toEqual([
+      "stash",
+      "store",
+      "--message",
+      "On main: wip",
+      "st",
+    ]);
+    expect(planUndo(e, ctx({ stashShas: ["st"] })).ok).toBe(false);
+  });
 });

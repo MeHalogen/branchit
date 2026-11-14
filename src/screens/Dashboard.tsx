@@ -19,6 +19,9 @@ const IMPLEMENTED: ReadonlySet<string> = new Set([
   "dashboard.sweep",
   "dashboard.commit",
   "dashboard.prepare",
+  "dashboard.workingTree",
+  "dashboard.sync",
+  "dashboard.stash",
   "global.refresh",
   "global.help",
   "global.quit",
@@ -31,6 +34,9 @@ const QUICK_ACTION_IDS: Command["id"][] = [
   "dashboard.sweep",
   "dashboard.fetch",
   "dashboard.prepare",
+  "dashboard.workingTree",
+  "dashboard.sync",
+  "dashboard.stash",
 ];
 
 export function Dashboard(props: { data: RepoData; width: number }) {

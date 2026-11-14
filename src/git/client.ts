@@ -78,6 +78,9 @@ export class GitClient {
           PAGER: "cat",
           GIT_TERMINAL_PROMPT: "0",
           LC_ALL: "C",
+          // Background reads (status refreshes) must never take index.lock and
+          // collide with the user's own git commands or our own mutations.
+          GIT_OPTIONAL_LOCKS: "0",
         },
         extendEnv: true,
       });

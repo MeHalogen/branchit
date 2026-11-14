@@ -6,6 +6,8 @@
  */
 import { type GitCommand, journalQuery, mutation } from "../git/command.js";
 import type { GitRepository } from "../git/repository.js";
+import { stashCommands } from "../git/stash.js";
+import { workspaceCommands } from "../git/workspace.js";
 import { relativeTime } from "../utils/format.js";
 import type { Journal, JournalEntry } from "./journal.js";
 
@@ -36,6 +38,12 @@ export function describeEntry(e: JournalEntry): string {
       return `Stashed changes and switched from ${e.from ?? "detached HEAD"} to ${e.to}`;
     case "push":
       return `Pushed ${e.branch} to ${e.remote}`;
+    case "discard":
+      return `Discarded changes to ${e.paths.length === 1 ? e.paths[0] : `${e.paths.length} files`}`;
+    case "pull":
+      return `Pulled (${e.mode}) into ${e.branch ?? "detached HEAD"}`;
+    case "stash-drop":
+      return `Dropped stash "${e.message}"`;
     case "undo":
       return "Undo";
   }
@@ -119,6 +127,25 @@ export function planUndo(e: JournalEntry, ctx: UndoContext): UndoPlan {
       const back = e.from ? mutation.switchBranch(e.from) : null;
       return yes([...(back ? [back] : []), mutation.stashPop(`stash@{${index}}`)]);
     }
+
+    case "discard": {
+      const index = ctx.stashShas.indexOf(e.stashSha);
+      if (index === -1) return no("The stash holding the discarded changes is gone.");
+      return yes([mutation.stashPop(`stash@{${index}}`)]);
+    }
+
+    case "pull":
+      if (ctx.headSha !== e.after) {
+        return no("HEAD has moved since the pull; undoing it now would discard later work.");
+      }
+      return yes(
+        [workspaceCommands.resetKeep(e.before)],
+        ["Uses git reset --keep: refuses rather than overwrite uncommitted changes."],
+      );
+
+    case "stash-drop":
+      if (ctx.stashShas.includes(e.sha)) return no("That stash is already back in the stash list.");
+      return yes([stashCommands.store(e.sha, e.message)]);
 
     case "push":
       return no(

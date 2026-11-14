@@ -16,6 +16,8 @@ export interface Rankable {
   /** Lower is more recent; undefined = unknown recency. */
   recencyRank?: number;
   isCurrent?: boolean;
+  /** Small per-item bonus within a tier (e.g. by result kind). Keep < 500. */
+  boost?: number;
 }
 
 export interface RankedMatch<T extends Rankable> {
@@ -148,7 +150,11 @@ export function rankBranches<T extends Rankable>(items: T[], query: string): Ran
     }
 
     if (score > TIER.none) {
-      results.push({ item, score: score + recencyBonus(item), matchedIndices: indices });
+      results.push({
+        item,
+        score: score + recencyBonus(item) + (item.boost ?? 0),
+        matchedIndices: indices,
+      });
     }
   }
 
