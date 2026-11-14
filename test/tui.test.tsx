@@ -7,6 +7,7 @@ import { ThemeProvider } from "../src/app/theme-context.js";
 import { detectRepository, GitRepository } from "../src/git/repository.js";
 import { resolveTheme } from "../src/theme/tokens.js";
 import { createRepo, type TempRepo } from "./fixtures/gitRepo.js";
+import { waitUntil } from "./fixtures/wait.js";
 
 const repos: TempRepo[] = [];
 afterEach(async () => {
@@ -66,10 +67,10 @@ describe("App TUI", () => {
 
     // Enter switches.
     ui.stdin.write("\r");
-    await delay(250);
-
-    const state = await git.getState();
-    expect(state.currentBranch).toBe("feat/payment-retry");
+    await waitUntil(
+      async () => (await git.getState()).currentBranch === "feat/payment-retry",
+      "the switch to feat/payment-retry",
+    );
     ui.unmount();
   });
 
