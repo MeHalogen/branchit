@@ -2,10 +2,10 @@
  * Repository trust store.
  *
  * Pre-commit checks execute programs defined by (or inferred from) a repository.
- * A malicious repo could define `"lint": "rm -rf ~"`, so Branchy NEVER runs
+ * A malicious repo could define `"lint": "rm -rf ~"`, so Branchit NEVER runs
  * these automatically: a repository must be explicitly trusted for a specific
  * set of commands. If the command set later changes, the recorded hash no
- * longer matches and Branchy re-prompts.
+ * longer matches and Branchit re-prompts.
  *
  * The store lives under the per-user config dir and maps repository root →
  * the hash of the last-trusted command set.

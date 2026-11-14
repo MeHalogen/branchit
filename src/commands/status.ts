@@ -1,5 +1,5 @@
 /**
- * `branchy status [--plain]` — scriptable repository status.
+ * `branchit status [--plain]` — scriptable repository status.
  *
  * The plain form emits stable key=value lines suitable for shell scripts; the
  * default form is a short human summary. Neither launches the TUI.

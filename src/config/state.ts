@@ -1,6 +1,6 @@
 /**
  * Tiny persisted UI state (currently just: has the user seen onboarding).
- * Stored next to config so it honors BRANCHY_CONFIG_DIR.
+ * Stored next to config so it honors BRANCHIT_CONFIG_DIR.
  */
 import { readFileSync, writeFileSync, mkdirSync } from "node:fs";
 import { join } from "node:path";

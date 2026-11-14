@@ -154,10 +154,10 @@ export function App(props: {
           title: "Branch switch blocked by local changes",
           lines: [
             `Switching to ${name} would overwrite uncommitted changes.`,
-            "Branchy can stash them (including untracked files) first.",
+            "Branchit can stash them (including untracked files) first.",
           ],
           commandPreview: [
-            `git stash push --include-untracked --message "branchy: switch to ${name}"`,
+            `git stash push --include-untracked --message "branchit: switch to ${name}"`,
             `git switch ${name}`,
           ],
           actions: [
@@ -170,7 +170,7 @@ export function App(props: {
             setBusy("Stashing changes…");
             const stashRes = await stashBeforeSwitch(
               git.client,
-              `branchy: switch to ${name}`,
+              `branchit: switch to ${name}`,
             );
             if (!stashRes.ok) {
               setBusy(null);

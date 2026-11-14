@@ -1,5 +1,5 @@
 /**
- * `branchy config` — show the resolved configuration and where it came from.
+ * `branchit config` — show the resolved configuration and where it came from.
  */
 import type { LoadedConfig } from "../config/load.js";
 import { userConfigPath, repoConfigPath } from "../config/load.js";
@@ -7,7 +7,7 @@ import { userConfigPath, repoConfigPath } from "../config/load.js";
 export function printConfig(loaded: LoadedConfig, root?: string): void {
   const { config, sources } = loaded;
   const lines: string[] = [];
-  lines.push("branchy config (resolved)");
+  lines.push("branchit config (resolved)");
   lines.push("");
   lines.push("Sources (low → high precedence):");
   lines.push(`  defaults (built-in)`);

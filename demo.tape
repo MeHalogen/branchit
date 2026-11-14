@@ -1,4 +1,4 @@
-# VHS Tape Script for Branchy Demo
+# VHS Tape Script for Branchit Demo
 # Run: vhs demo.tape
 
 Set Shell bash
@@ -14,19 +14,19 @@ Output docs/demo.gif
 
 # Hidden setup commands to ensure a clean slate and correct config
 Hide
-Type "export BRANCHY_CONFIG_DIR=/tmp/branchy-config" Enter
-Type "rm -rf /tmp/branchy-config" Enter
-Type "mkdir -p /tmp/branchy-config" Enter
-Type "node /Users/mehalsrivastava/GitHub/Branchy/scripts/demo-repo.ts /tmp/branchy-demo" Enter
-Type "cd /tmp/branchy-demo" Enter
+Type "export BRANCHIT_CONFIG_DIR=/tmp/branchit-config" Enter
+Type "rm -rf /tmp/branchit-config" Enter
+Type "mkdir -p /tmp/branchit-config" Enter
+Type "node /Users/mehalsrivastava/GitHub/Branchit/scripts/demo-repo.ts /tmp/branchit-demo" Enter
+Type "cd /tmp/branchit-demo" Enter
 Type "clear" Enter
 Show
 
 # --- START TOUR ---
 Sleep 2s
 
-# Launch Branchy
-Type "node /Users/mehalsrivastava/GitHub/Branchy/dist/cli.js" Enter
+# Launch Branchit
+Type "node /Users/mehalsrivastava/GitHub/Branchit/dist/cli.js" Enter
 Sleep 3s
 
 # 1. Onboarding Screen
@@ -116,7 +116,7 @@ Sleep 3.5s
 # Press Enter to proceed to checks.
 Enter
 Sleep 3.5s
-# Prompt: Branchy detects repo-defined checks and requests explicit trust.
+# Prompt: Branchit detects repo-defined checks and requests explicit trust.
 # Press 't' to trust and run them.
 Type "t"
 Sleep 8s
@@ -134,6 +134,6 @@ Sleep 2.5s
 Escape
 Sleep 2s
 
-# Exit Branchy
+# Exit Branchit
 Type "q"
 Sleep 3s

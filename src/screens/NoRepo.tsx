@@ -4,7 +4,7 @@ import { useColor } from "../app/theme-context.js";
 import { abbreviateHome } from "../utils/format.js";
 import { homedir } from "node:os";
 
-/** Polished empty state for when Branchy is launched outside a Git repo. */
+/** Polished empty state for when Branchit is launched outside a Git repo. */
 export function NoRepo(props: { cwd: string; width: number }) {
   const color = useColor();
   const { exit } = useApp();
@@ -26,12 +26,12 @@ export function NoRepo(props: { cwd: string; width: number }) {
         <Text color={color("dim")}>{abbreviateHome(props.cwd, homedir())}</Text>
       </Box>
       <Box marginTop={1}>
-        <Text color={color("text")}>Branchy works inside Git repositories.</Text>
+        <Text color={color("text")}>Branchit works inside Git repositories.</Text>
       </Box>
       <Box marginTop={1}>
         <Text color={color("dim")}>
           Run <Text color={color("text")}>git init</Text> here, or cd into a
-          repository and start Branchy again.
+          repository and start Branchit again.
         </Text>
       </Box>
       <Box marginTop={1}>

@@ -1,7 +1,7 @@
 /**
  * Core Git domain types.
  *
- * These describe repository state as Branchy understands it. They deliberately
+ * These describe repository state as Branchit understands it. They deliberately
  * avoid UI-specific fields (selection, focus, etc.) — that state lives in the
  * screen/state layer, not here.
  */
@@ -108,7 +108,7 @@ export type OperationState =
 export interface RepositoryState {
   rootPath: string;
   gitDir: string;
-  /** Directory Branchy was launched from (may be a subdirectory of root). */
+  /** Directory Branchit was launched from (may be a subdirectory of root). */
   cwd: string;
   currentBranch: string | null;
   head: CommitRef | null;

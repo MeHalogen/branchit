@@ -74,7 +74,7 @@ export function Dashboard(props: { data: RepoData; width: number }) {
       >
         <Box>
           <Text color={color("accent")} bold>
-            branchy
+            branchit
           </Text>
           <Text color={color("dim")}> {sanitizeForDisplay(repoName)}</Text>
         </Box>

@@ -36,7 +36,7 @@ export interface CheckRunResult {
   results: CheckState[];
 }
 
-// npm-script names Branchy knows how to suggest, in a sensible run order.
+// npm-script names Branchit knows how to suggest, in a sensible run order.
 const KNOWN_SCRIPTS = ["typecheck", "lint", "test", "check", "format:check"];
 
 function detectPackageManager(root: string): string {

@@ -1,6 +1,6 @@
 # Testing
 
-Branchy is tested against **real Git**, not mocks. Correctness of Git semantics
+Branchit is tested against **real Git**, not mocks. Correctness of Git semantics
 is the product, so tests spawn real `git` over temporary repositories.
 
 ## Commands

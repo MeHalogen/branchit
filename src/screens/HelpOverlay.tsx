@@ -79,7 +79,7 @@ export function HelpOverlay(props: {
           What does “merged” mean?
         </Text>
         <Text color={color("dim")}>
-          Branchy verifies a branch tip is reachable from the base branch before
+          Branchit verifies a branch tip is reachable from the base branch before
           offering Git&apos;s safe <Text color={color("text")}>-d</Text> deletion.
           It never force-deletes on a name or age heuristic.
         </Text>

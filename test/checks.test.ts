@@ -9,7 +9,7 @@ afterEach(async () => {
   await Promise.all(dirs.splice(0).map((d) => rm(d, { recursive: true, force: true })));
 });
 async function tmp() {
-  const d = await mkdtemp(join(tmpdir(), "branchy-checks-"));
+  const d = await mkdtemp(join(tmpdir(), "branchit-checks-"));
   dirs.push(d);
   return d;
 }

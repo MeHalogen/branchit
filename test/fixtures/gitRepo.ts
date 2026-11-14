@@ -60,11 +60,11 @@ export class TempRepo {
 export async function createRepo(
   opts: { initialBranch?: string; withInitialCommit?: boolean } = {},
 ): Promise<TempRepo> {
-  const dir = await mkdtemp(join(tmpdir(), "branchy-test-"));
+  const dir = await mkdtemp(join(tmpdir(), "branchit-test-"));
   const repo = new TempRepo(dir);
   await repo.git(["init", "-b", opts.initialBranch ?? "main"]);
-  await repo.git(["config", "user.email", "test@branchy.dev"]);
-  await repo.git(["config", "user.name", "Branchy Test"]);
+  await repo.git(["config", "user.email", "test@branchit.dev"]);
+  await repo.git(["config", "user.name", "Branchit Test"]);
   await repo.git(["config", "commit.gpgsign", "false"]);
   if (opts.withInitialCommit !== false) {
     await repo.commitFile("README.md", "# test\n", "chore: initial commit");
@@ -74,7 +74,7 @@ export async function createRepo(
 
 /** Create a bare repo usable as a fake remote. */
 export async function createBareRemote(): Promise<TempRepo> {
-  const dir = await mkdtemp(join(tmpdir(), "branchy-remote-"));
+  const dir = await mkdtemp(join(tmpdir(), "branchit-remote-"));
   const repo = new TempRepo(dir);
   await repo.git(["init", "--bare", "-b", "main"]);
   return repo;

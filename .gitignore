@@ -3,4 +3,4 @@ dist/
 *.log
 .DS_Store
 coverage/
-.branchy-cache/
+.branchit-cache/

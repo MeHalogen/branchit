@@ -37,16 +37,16 @@ async function mergedBranch(dir: string, name: string, file: string, msg: string
 
 async function main() {
   const target = process.argv[2];
-  const dir = target ?? (await mkdtemp(join(tmpdir(), "branchy-demo-")));
+  const dir = target ?? (await mkdtemp(join(tmpdir(), "branchit-demo-")));
   await rm(dir, { recursive: true, force: true }).catch(() => {});
   await mkdir(dir, { recursive: true });
 
-  const remote = await mkdtemp(join(tmpdir(), "branchy-demo-remote-"));
+  const remote = await mkdtemp(join(tmpdir(), "branchit-demo-remote-"));
   await git(remote, ["init", "--bare", "-b", "main"]);
 
   await git(dir, ["init", "-b", "main"]);
-  await git(dir, ["config", "user.email", "demo@branchy.dev"]);
-  await git(dir, ["config", "user.name", "Branchy Demo"]);
+  await git(dir, ["config", "user.email", "demo@branchit.dev"]);
+  await git(dir, ["config", "user.name", "Branchit Demo"]);
   await git(dir, ["config", "commit.gpgsign", "false"]);
 
   await commit(dir, "README.md", "# payments-api\n", "chore: initial commit");
@@ -59,7 +59,7 @@ async function main() {
       test: "echo '✓ 42 unit tests passed' && sleep 0.5"
     }
   }, null, 2) + "\n", "chore: add package.json");
-  await commit(dir, ".branchy.toml", `[ui]
+  await commit(dir, ".branchit.toml", `[ui]
 command_preview = true
 theme = "default"
 
@@ -71,7 +71,7 @@ protected = ["main", "release/*"]
 scopes = ["cli", "git", "ui", "payments"]
 max_subject_length = 72
 require_scope = true
-`, "chore: add branchy config");
+`, "chore: add branchit config");
   await commit(dir, "src/index.ts", "export const version = '1.0.0';\n", "feat: bootstrap service");
   await commit(dir, "src/payments/retry.ts", "export function retry() {}\n", "feat(payments): add retry stub");
   await git(dir, ["remote", "add", "origin", remote]);
@@ -111,7 +111,7 @@ require_scope = true
   await writeFile(join(dir, "src/payments/retry.ts"), "export function retry() { /* backoff */ }\n");
   await writeFile(join(dir, "TODO.md"), "- wire up exponential backoff\n");
 
-  process.stdout.write(`Demo repository ready:\n  ${dir}\n\nTry it:\n  cd ${dir} && branchy\n`);
+  process.stdout.write(`Demo repository ready:\n  ${dir}\n\nTry it:\n  cd ${dir} && branchit\n`);
 }
 
 main().catch((err) => {

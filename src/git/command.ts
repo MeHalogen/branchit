@@ -1,7 +1,7 @@
 /**
  * Centralized Git command construction.
  *
- * Every Git invocation in Branchy is built here as a structured
+ * Every Git invocation in Branchit is built here as a structured
  * {@link GitCommand}: a program plus an argument array. Nothing in this file
  * ever concatenates a user-controlled value into a shell string.
  *

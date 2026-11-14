@@ -1,7 +1,7 @@
 /**
  * Safe Git process executor.
  *
- * The only place in Branchy that spawns `git`. Guarantees:
+ * The only place in Branchit that spawns `git`. Guarantees:
  *   - argument arrays only; `shell: false` — no shell interpolation, ever;
  *   - stdout/stderr/exitCode/duration captured and normalized;
  *   - remote-capable operations get a timeout so the UI never hangs forever;

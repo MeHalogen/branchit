@@ -1,4 +1,4 @@
-# Branchy dogfoods its own config. See .branchy.example.toml for all options.
+# Branchit dogfoods its own config. See .branchit.example.toml for all options.
 
 [branches]
 protected = ["main"]
@@ -8,5 +8,5 @@ scopes = ["cli", "git", "app", "screens", "workflows", "config", "docs"]
 max_subject_length = 72
 
 [checks]
-# Branchy runs its own typecheck + tests before a commit (once trusted).
+# Branchit runs its own typecheck + tests before a commit (once trusted).
 commands = ["npm run typecheck", "npm test"]

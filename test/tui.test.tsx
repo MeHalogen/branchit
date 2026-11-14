@@ -42,7 +42,7 @@ describe("App TUI", () => {
     const { ui } = await setup();
     await delay(50);
     const frame = ui.lastFrame() ?? "";
-    expect(frame).toContain("branchy");
+    expect(frame).toContain("branchit");
     expect(frame).toContain("main");
     expect(frame).toContain("Quick actions");
     expect(frame).toContain("Switch branch");

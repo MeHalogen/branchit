@@ -3,7 +3,7 @@
  *
  * We read reflog *subjects* ("checkout: moving from A to B") to reconstruct the
  * order in which branches were most recently checked out. This is Git-native
- * and requires no separate Branchy cache. First appearance (newest reflog
+ * and requires no separate Branchit cache. First appearance (newest reflog
  * entry) wins, giving each branch a recency rank (0 = most recent).
  */
 import type { GitClient } from "./client.js";

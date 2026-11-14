@@ -1,6 +1,6 @@
 # Architecture
 
-Branchy separates concerns into clear layers. The UI never executes Git strings;
+Branchit separates concerns into clear layers. The UI never executes Git strings;
 it dispatches to workflows, which validate state and call typed actions, which
 build argument arrays that a single safe executor runs.
 
