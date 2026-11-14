@@ -22,7 +22,7 @@
     "node": ">=18"
   },
   "scripts": {
-    "dev": "node --import tsx src/cli.tsx",
+    "dev": "node --import tsx src/cli.ts",
     "build": "tsup",
     "typecheck": "tsc --noEmit",
     "test": "vitest run",

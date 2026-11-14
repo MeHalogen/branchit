@@ -67,3 +67,21 @@ export function repoNameFromRoot(root: string): string {
   const parts = root.split("/").filter(Boolean);
   return parts[parts.length - 1] ?? root;
 }
+
+/** Whole days between an ISO timestamp and `now` (never negative). */
+export function ageInDays(iso: string, now: Date = new Date()): number {
+  const then = new Date(iso).getTime();
+  if (Number.isNaN(then)) return 0;
+  return Math.max(0, Math.floor((now.getTime() - then) / 86_400_000));
+}
+
+/** Spelled-out age for shareable summaries: "6 days", "4 weeks", "14 months". */
+export function humanAge(iso: string, now: Date = new Date()): string {
+  const days = ageInDays(iso, now);
+  const unit = (n: number, word: string) => `${n} ${word}${n === 1 ? "" : "s"}`;
+  if (days === 0) return "today";
+  if (days < 14) return unit(days, "day");
+  if (days < 60) return unit(Math.floor(days / 7), "week");
+  if (days < 730) return unit(Math.floor(days / 30), "month");
+  return unit(Math.floor(days / 365), "year");
+}

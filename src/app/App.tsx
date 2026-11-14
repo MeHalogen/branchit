@@ -36,7 +36,11 @@ import { sanitizeForDisplay } from "../utils/format.js";
 import { openUrl } from "../utils/open-url.js";
 import { commandsFromStrings, detectChecks, runChecks } from "../workflows/checks.js";
 import { gatherPrReadiness, type PrContext } from "../workflows/pr.js";
-import { gatherSweepCandidates, type SweepCandidate } from "../workflows/sweep.js";
+import {
+  gatherSweepCandidates,
+  resolveSweepConfig,
+  type SweepCandidate,
+} from "../workflows/sweep.js";
 import { toastForError } from "./error-text.js";
 import { loadRepoData, type RepoData } from "./loadRepo.js";
 import { useColor } from "./theme-context.js";
@@ -74,11 +78,6 @@ const IMPLEMENTED_COMMANDS: ReadonlySet<CommandId> = new Set([
 ]);
 
 /** Local leaf name of a base ref, e.g. "origin/main" -> "main". */
-function baseLeaf(base: string): string {
-  const slash = base.lastIndexOf("/");
-  return slash === -1 ? base : base.slice(slash + 1);
-}
-
 export function App(props: {
   git: GitRepository;
   initial: RepoData;
@@ -300,8 +299,12 @@ export function App(props: {
 
   // ── Sweeper ─────────────────────────────────────────────────────────────
   const openSweeper = useCallback(async () => {
-    const base = config.branches.defaultBase ?? data.state.defaultBranch;
-    if (!base) {
+    const sweepConfig = resolveSweepConfig(
+      config.branches,
+      data.state.defaultBranch,
+      data.state.currentBranch,
+    );
+    if (!sweepConfig) {
       notify({
         kind: "warning",
         message: "Could not determine a base branch to sweep against",
@@ -309,18 +312,12 @@ export function App(props: {
       return;
     }
     setBusy("Scanning branches…");
-    const protectedPatterns = [...config.branches.protected, baseLeaf(base)];
-    const candidates = await gatherSweepCandidates(git.client, data.branches, {
-      base,
-      protectedPatterns,
-      currentBranch: data.state.currentBranch,
-    });
+    const candidates = await gatherSweepCandidates(git.client, data.branches, sweepConfig);
     setBusy(null);
-    setSweep({ base, candidates });
+    setSweep({ base: sweepConfig.base, candidates });
     setView("sweeper");
   }, [
-    config.branches.defaultBase,
-    config.branches.protected,
+    config.branches,
     data.branches,
     data.state.currentBranch,
     data.state.defaultBranch,
