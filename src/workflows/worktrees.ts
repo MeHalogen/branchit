@@ -38,12 +38,17 @@ function slugBranch(branch: string): string {
     .join("-");
 }
 
+/** Git prints worktree paths with forward slashes on every platform; match it. */
+export function toGitPath(path: string): string {
+  return path.replace(/\\/g, "/");
+}
+
 /** Expand a `[worktrees] root` template for a branch. */
 export function worktreePathFor(template: string, repoRoot: string, branch: string): string {
   const expanded = template
     .replaceAll("{repo}", basename(repoRoot))
     .replaceAll("{branch}", slugBranch(branch));
-  return isAbsolute(expanded) ? resolve(expanded) : resolve(repoRoot, expanded);
+  return toGitPath(isAbsolute(expanded) ? resolve(expanded) : resolve(repoRoot, expanded));
 }
 
 function cmd(args: string[]): GitCommand {

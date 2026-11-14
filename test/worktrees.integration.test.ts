@@ -9,7 +9,7 @@ import { Journal } from "../src/journal/journal.js";
 import { Recorder } from "../src/journal/record.js";
 import { executeUndo, planUndo, readUndoContext } from "../src/journal/undo.js";
 import { gatherSweepCandidates, resolveSweepConfig } from "../src/workflows/sweep.js";
-import { gatherWorktrees, worktreeCommands } from "../src/workflows/worktrees.js";
+import { gatherWorktrees, toGitPath, worktreeCommands } from "../src/workflows/worktrees.js";
 import { createRepo } from "./fixtures/gitRepo.js";
 
 const cleanups: (() => Promise<void>)[] = [];
@@ -104,7 +104,7 @@ describe("worktree manager (real git)", () => {
 
   it("sweep removes a merged branch together with its clean worktree, and undo restores both", async () => {
     const { repo, git, journal, rec, wtRoot } = await setup();
-    const path = join(wtRoot, "done");
+    const path = toGitPath(join(wtRoot, "done"));
     await rec.addWorktree(path, "feat/done", { newBranchFrom: "main" });
     // Branch tip == main tip, so it is merged.
     const cfg = resolveSweepConfig(defaultConfig().branches, "main", "main")!;

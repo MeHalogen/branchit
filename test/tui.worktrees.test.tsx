@@ -10,6 +10,7 @@ import { ThemeProvider } from "../src/app/theme-context.js";
 import { defaultConfig } from "../src/config/schema.js";
 import { detectRepository, GitRepository } from "../src/git/repository.js";
 import { resolveTheme } from "../src/theme/tokens.js";
+import { toGitPath } from "../src/workflows/worktrees.js";
 import { createRepo } from "./fixtures/gitRepo.js";
 import { delay, waitForFrame, waitUntil } from "./fixtures/wait.js";
 
@@ -60,9 +61,9 @@ describe("Worktrees TUI (t)", () => {
     await delay(50);
     ui.stdin.write("\r");
     await waitForFrame(ui, "Add worktree for feat/parallel?");
-    expect(ui.lastFrame()).toContain(join(wtRoot, "feat-parallel"));
+    const path = toGitPath(join(wtRoot, "feat-parallel"));
+    expect(ui.lastFrame()).toContain(path);
     ui.stdin.write("\r");
-    const path = join(wtRoot, "feat-parallel");
     await waitUntil(() => existsSync(path), "worktree directory");
     await waitForFrame(ui, "2 checkouts");
 
