@@ -82,6 +82,17 @@ describe("discard (stash-backed, undoable)", () => {
   });
 });
 
+describe("stash-backed operations never journal a stash they did not create", () => {
+  it("discarding a path with no changes records nothing (an older stash is left alone)", async () => {
+    const { repo, journal, rec } = await setup();
+    await repo.writeFileAt("f.txt", "older work\n");
+    await repo.git(["stash", "push", "--message", "someone else's stash"]);
+    await rec.discard(["f.txt"]); // f.txt is clean now: nothing to stash
+    expect(journal.read().filter((e) => e.op === "discard")).toEqual([]);
+    expect(await repo.git(["stash", "list"])).toContain("someone else's stash");
+  });
+});
+
 describe("pull", () => {
   async function withRemote() {
     const remote = await createBareRemote();
