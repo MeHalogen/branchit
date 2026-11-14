@@ -1,18 +1,19 @@
+import { resolve } from "node:path";
 import { describe, expect, it } from "vitest";
 import { shellInitScript } from "../src/commands/shell-init.js";
 import { ConfigFileSchema, defaultConfig, mergeConfig } from "../src/config/schema.js";
 import { parseWorktreeList } from "../src/git/parsers.js";
-import { worktreePathFor } from "../src/workflows/worktrees.js";
+import { toGitPath, worktreePathFor } from "../src/workflows/worktrees.js";
 
 describe("worktreePathFor", () => {
   it("expands {repo} and {branch} relative to the repository root", () => {
     expect(worktreePathFor("../{repo}-wt/{branch}", "/home/me/code/api", "feat/login")).toBe(
-      "/home/me/code/api-wt/feat-login",
+      toGitPath(resolve("/home/me/code/api-wt/feat-login")),
     );
   });
   it("keeps absolute templates and strips unsafe branch characters", () => {
     expect(worktreePathFor("/tmp/wt/{repo}/{branch}", "/x/api", "fix/../../evil")).toBe(
-      "/tmp/wt/api/fix-evil",
+      toGitPath(resolve("/tmp/wt/api/fix-evil")),
     );
   });
 });
