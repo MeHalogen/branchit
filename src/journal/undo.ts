@@ -9,6 +9,7 @@ import type { GitRepository } from "../git/repository.js";
 import { stashCommands } from "../git/stash.js";
 import { workspaceCommands } from "../git/workspace.js";
 import { relativeTime } from "../utils/format.js";
+import { worktreeCommands } from "../workflows/worktrees.js";
 import type { Journal, JournalEntry } from "./journal.js";
 
 export interface UndoContext {
@@ -44,6 +45,10 @@ export function describeEntry(e: JournalEntry): string {
       return `Pulled (${e.mode}) into ${e.branch ?? "detached HEAD"}`;
     case "stash-drop":
       return `Dropped stash "${e.message}"`;
+    case "worktree-add":
+      return `Added worktree ${e.path} (${e.branch})`;
+    case "worktree-remove":
+      return `Removed worktree ${e.path}${e.branch ? ` (${e.branch})` : ""}`;
     case "undo":
       return "Undo";
   }
@@ -97,9 +102,12 @@ export function planUndo(e: JournalEntry, ctx: UndoContext): UndoPlan {
       const cmds: GitCommand[] = [];
       const warnings: string[] = [];
       for (const b of e.branches) {
-        if (ctx.branchTips.has(b.name))
+        if (ctx.branchTips.has(b.name)) {
           warnings.push(`${b.name} already exists again; left as is.`);
-        else cmds.push(mutation.recreateBranch(b.name, b.sha));
+          continue;
+        }
+        cmds.push(mutation.recreateBranch(b.name, b.sha));
+        if (b.worktreePath) cmds.push(worktreeCommands.addExisting(b.worktreePath, b.name));
       }
       if (cmds.length === 0) return no("Every deleted branch has been recreated already.");
       return yes(cmds, warnings);
@@ -146,6 +154,24 @@ export function planUndo(e: JournalEntry, ctx: UndoContext): UndoPlan {
     case "stash-drop":
       if (ctx.stashShas.includes(e.sha)) return no("That stash is already back in the stash list.");
       return yes([stashCommands.store(e.sha, e.message)]);
+
+    case "worktree-add": {
+      const cmds: GitCommand[] = [worktreeCommands.remove(e.path, false)];
+      const warnings = ["Git refuses to remove the worktree if it has uncommitted changes."];
+      if (e.createdBranch) {
+        const tip = ctx.branchTips.get(e.branch);
+        if (tip === e.sha) cmds.push(mutation.safeDeleteBranch(e.branch));
+        else if (tip !== undefined)
+          warnings.push(`${e.branch} has new commits, so the branch is kept.`);
+      }
+      return yes(cmds, warnings);
+    }
+
+    case "worktree-remove":
+      if (e.branch && !ctx.branchTips.has(e.branch)) {
+        return no(`${e.branch} no longer exists, so its worktree cannot be recreated.`);
+      }
+      return yes([worktreeCommands.addExisting(e.path, e.branch ?? e.head)]);
 
     case "push":
       return no(

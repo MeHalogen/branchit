@@ -7,10 +7,12 @@ export const SUBCOMMANDS = [
   "pr",
   "switch",
   "undo",
+  "worktrees",
   "demo",
   "doctor",
   "config",
   "completions",
+  "shell-init",
   "version",
   "help",
 ] as const;
@@ -38,6 +40,8 @@ const DESCRIPTIONS: Record<(typeof SUBCOMMANDS)[number], string> = {
   pr: "Pull-request readiness",
   switch: "Switch to a branch",
   undo: "Undo the last operation",
+  worktrees: "List worktrees",
+  "shell-init": "Print the shell wrapper for cd-on-exit",
   demo: "Open a sandbox demo repository",
   doctor: "Diagnose the environment",
   config: "Show resolved configuration",
@@ -56,7 +60,7 @@ _branchit() {
     COMPREPLY=( $(compgen -W "$(git for-each-ref --format='%(refname:short)' refs/heads 2>/dev/null)" -- "$cur") )
     return
   fi
-  if [[ "$prev" == "completions" ]]; then
+  if [[ "$prev" == "completions" || "$prev" == "shell-init" ]]; then
     COMPREPLY=( $(compgen -W "zsh bash fish" -- "$cur") )
     return
   fi
@@ -86,7 +90,7 @@ ${cmds}
   fi
   case "\${words[2]}" in
     switch) compadd -- \${(f)"$(git for-each-ref --format='%(refname:short)' refs/heads 2>/dev/null)"} ;;
-    completions) compadd zsh bash fish ;;
+    completions|shell-init) compadd zsh bash fish ;;
     *) compadd -- ${FLAGS.join(" ")} ;;
   esac
 }
@@ -104,7 +108,7 @@ function fish(): string {
   }
   lines.push(
     "complete -c branchit -n '__fish_seen_subcommand_from switch' -a '(git for-each-ref --format=\"%(refname:short)\" refs/heads 2>/dev/null)'",
-    "complete -c branchit -n '__fish_seen_subcommand_from completions' -a 'zsh bash fish'",
+    "complete -c branchit -n '__fish_seen_subcommand_from completions shell-init' -a 'zsh bash fish'",
   );
   for (const f of FLAGS) lines.push(`complete -c branchit -l ${f.slice(2)}`);
   return `${lines.join("\n")}\n`;

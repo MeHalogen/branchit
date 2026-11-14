@@ -177,6 +177,7 @@ function buildSpecs(
       name: c.branch.name,
       mode: c.deletionMode === "force" ? "force" : "safe",
       restoreSha: c.branch.lastCommit?.sha ?? null,
+      ...(c.worktreePath ? { worktreePath: c.worktreePath } : {}),
     }));
 }
 

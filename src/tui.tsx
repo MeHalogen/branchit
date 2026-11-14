@@ -2,6 +2,7 @@
  * Interactive entry. Loaded lazily by `cli.ts` so that `--version`, `--help`
  * and every non-interactive command start without paying for Ink + React.
  */
+import { writeFileSync } from "node:fs";
 import { render } from "ink";
 import { App } from "./app/App.js";
 import { loadRepoData } from "./app/loadRepo.js";
@@ -33,6 +34,7 @@ export async function launchTui(
         commandPreview={commandPreview}
         config={cfg}
         firstRun={!hasOnboarded()}
+        cdTo={cdViaShellWrapper}
       />
     </ThemeProvider>,
     { exitOnCtrlC: true },
@@ -51,4 +53,19 @@ export async function renderNoRepo(cwd: string, flags: Set<string>): Promise<voi
     </ThemeProvider>,
   );
   await app.waitUntilExit();
+}
+
+/**
+ * With `branchit shell-init` installed, the wrapper sets BRANCHIT_CD_FILE and
+ * cds to whatever path we write there once we exit.
+ */
+function cdViaShellWrapper(path: string): boolean {
+  const file = process.env["BRANCHIT_CD_FILE"];
+  if (!file) return false;
+  try {
+    writeFileSync(file, path);
+    return true;
+  } catch {
+    return false;
+  }
 }

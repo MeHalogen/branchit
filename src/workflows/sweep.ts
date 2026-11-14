@@ -34,6 +34,8 @@ export interface SweepCandidate {
   uniqueCommitCount: number;
   /** UI selection state; managed by the screen, defaulted by policy here. */
   selected: boolean;
+  /** Set when deleting the branch also removes its (linked) worktree. */
+  worktreePath?: string;
 }
 
 export interface SweepConfig {
@@ -81,6 +83,21 @@ export function classifyBranch(
     return candidate(branch, "protected", "certain", ["current branch"], "none", info, false);
   }
   if (branch.worktreePath) {
+    if (info.merged && !isProtectedName(branch.name, config.protectedPatterns)) {
+      // Merged work living in a linked worktree: offer to remove both, but
+      // never preselect it — the worktree directory goes too (refused by Git
+      // if it has uncommitted changes).
+      const c = candidate(
+        branch,
+        "safe_merged",
+        "certain",
+        [`tip reachable from ${config.base}`, `removes its worktree too: ${branch.worktreePath}`],
+        "safe",
+        info,
+        false,
+      );
+      return { ...c, worktreePath: branch.worktreePath };
+    }
     return candidate(
       branch,
       "protected",
@@ -168,7 +185,7 @@ export async function gatherSweepCandidates(
   for (const branch of locals) {
     const protectedByPolicy =
       branch.isCurrent ||
-      Boolean(branch.worktreePath) ||
+      (Boolean(branch.worktreePath) && !mergedSet.has(branch.name)) ||
       isProtectedName(branch.name, config.protectedPatterns);
 
     if (protectedByPolicy) {

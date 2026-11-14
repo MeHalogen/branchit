@@ -249,6 +249,9 @@ export interface WorktreeEntry {
   branchRef: string | null; // e.g. refs/heads/feat/x
   bare: boolean;
   detached: boolean;
+  locked: boolean;
+  /** Git reports the worktree's directory is gone; `git worktree prune` cleans it. */
+  prunable: boolean;
 }
 
 export function parseWorktreeList(stdout: string): WorktreeEntry[] {
@@ -272,12 +275,16 @@ export function parseWorktreeList(stdout: string): WorktreeEntry[] {
         branchRef: null,
         bare: false,
         detached: false,
+        locked: false,
+        prunable: false,
       };
     } else if (current) {
       if (line.startsWith("HEAD ")) current.head = line.slice(5);
       else if (line.startsWith("branch ")) current.branchRef = line.slice(7);
       else if (line === "bare") current.bare = true;
       else if (line === "detached") current.detached = true;
+      else if (line === "locked" || line.startsWith("locked ")) current.locked = true;
+      else if (line === "prunable" || line.startsWith("prunable ")) current.prunable = true;
     }
   }
   flush();

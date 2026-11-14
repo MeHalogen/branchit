@@ -37,6 +37,7 @@ Usage:
   branchit demo                  Open the TUI in a throwaway sandbox repository
   branchit sweep [--yes]         List merged/stale branches; --yes deletes the safely merged ones
   branchit undo [--yes]          Preview (or apply) the inverse of the last operation; --list for history
+  branchit worktrees             List worktrees with dirty state and ahead/behind (alias: wt)
   branchit branches              List local branches (--all includes remotes)
   branchit pr                    Pull-request readiness for the current branch
   branchit status                Print repository status (--plain for key=value)
@@ -44,6 +45,7 @@ Usage:
   branchit doctor                Diagnose the environment
   branchit config                Show resolved configuration and its sources
   branchit completions <shell>   Print completions for zsh, bash or fish
+  branchit shell-init <shell>    Shell wrapper so "open worktree here" can cd your shell
   branchit version               Print the version
 
 Options:
@@ -57,7 +59,7 @@ Options:
   --version, -v           Show the version
 
 Interactive keys:
-  b switch   n new   s sweep   c commit   p PR   u undo   f fetch   : commands   ? help   q quit
+  b switch   n new   s sweep   c commit   p PR   u undo   t worktrees   w files   / search   f fetch   : commands   ? help   q quit
 `;
 
 async function main(): Promise<number> {
@@ -78,6 +80,16 @@ async function main(): Promise<number> {
     const script = positional[0] ? completionScript(positional[0] as never) : null;
     if (!script) {
       err("Usage: branchit completions zsh|bash|fish\n");
+      return 1;
+    }
+    out(script);
+    return 0;
+  }
+  if (command === "shell-init") {
+    const { shellInitScript } = await import("./commands/shell-init.js");
+    const script = positional[0] ? shellInitScript(positional[0] as never) : null;
+    if (!script) {
+      err("Usage: branchit shell-init zsh|bash|fish\n");
       return 1;
     }
     out(script);
@@ -141,6 +153,10 @@ async function main(): Promise<number> {
     const { runUndoCommand } = await import("./commands/undo.js");
     return runUndoCommand(git, { yes: flags.has("yes"), json, list: flags.has("list") }, io);
   }
+  if (command === "worktrees" || command === "wt") {
+    const { runWorktreesCommand } = await import("./commands/worktrees.js");
+    return runWorktreesCommand(git, { json }, io);
+  }
   if (command === "branches") {
     const { runBranchesCommand } = await import("./commands/branches.js");
     return runBranchesCommand(git, { json, all: flags.has("all") }, io);
@@ -180,7 +196,18 @@ async function main(): Promise<number> {
   return 0;
 }
 
-const KNOWN = new Set(["status", "switch", "branches", "config", "sweep", "pr", "demo", "undo"]);
+const KNOWN = new Set([
+  "status",
+  "switch",
+  "branches",
+  "config",
+  "sweep",
+  "pr",
+  "demo",
+  "undo",
+  "worktrees",
+  "wt",
+]);
 
 async function nonInteractiveSwitch(git: GitRepository, name: string | undefined): Promise<number> {
   if (!name) {

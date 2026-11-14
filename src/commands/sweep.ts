@@ -50,10 +50,13 @@ export async function runSweepCommand(
   const { safe, review, protected: prot } = sweepSummary(candidates);
 
   let deleted: DeleteOutcome[] = [];
-  if (opts.yes && safe.length > 0) {
+  // Only preselected candidates are deleted without a prompt: proven merged
+  // and not checked out anywhere (worktree branches need the TUI's explicit pick).
+  const autoDelete = safe.filter((c) => c.selected);
+  if (opts.yes && autoDelete.length > 0) {
     const recorder = new Recorder(git, Journal.forGitDir(git.gitDir));
     ({ outcomes: deleted } = await recorder.deleteBranches(
-      safe.map((c) => ({
+      autoDelete.map((c) => ({
         name: c.branch.name,
         mode: "safe" as const,
         restoreSha: c.branch.lastCommit?.sha ?? null,
@@ -110,10 +113,10 @@ export async function runSweepCommand(
   }
 
   out.push(sweepReportCard(candidates, now));
-  if (!opts.yes && safe.length > 0) {
+  if (!opts.yes && autoDelete.length > 0) {
     out.push(
       "",
-      `Run \`branchit sweep --yes\` to delete the ${safe.length} safely merged branch${safe.length === 1 ? "" : "es"}.`,
+      `Run \`branchit sweep --yes\` to delete the ${autoDelete.length} safely merged branch${autoDelete.length === 1 ? "" : "es"}.`,
     );
   }
   io.out(`${out.join("\n")}\n`);

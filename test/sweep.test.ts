@@ -113,14 +113,27 @@ describe("classifyBranch", () => {
     expect(c.selected).toBe(false);
   });
 
-  it("protects branches checked out in another worktree", () => {
+  it("protects unmerged branches checked out in another worktree", () => {
+    const c = classifyBranch(
+      branch({ name: "feat/wt", worktreePath: "/somewhere/else" }),
+      info({ merged: false, uniqueCommitCount: 2 }),
+      config,
+    );
+    expect(c.classification).toBe("protected");
+    expect(c.deletionMode).toBe("none");
+  });
+
+  it("offers merged worktree branches for remove-both, never preselected", () => {
     const c = classifyBranch(
       branch({ name: "feat/wt", worktreePath: "/somewhere/else" }),
       info({ merged: true }),
       config,
     );
-    expect(c.classification).toBe("protected");
-    expect(c.deletionMode).toBe("none");
+    expect(c.classification).toBe("safe_merged");
+    expect(c.deletionMode).toBe("safe");
+    expect(c.selected).toBe(false);
+    expect(c.worktreePath).toBe("/somewhere/else");
+    expect(c.reasons.join(" ")).toContain("worktree");
   });
 
   it("protects configured branches", () => {

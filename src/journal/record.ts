@@ -23,6 +23,7 @@ import type { StashEntry } from "../git/stash.js";
 import { stashCommands } from "../git/stash.js";
 import { pushCurrent } from "../git/sync.js";
 import { type PullMode, workspaceCommands } from "../git/workspace.js";
+import { type WorktreeInfo, worktreeCommands } from "../workflows/worktrees.js";
 import type { Journal, JournalEntry, JournalOp } from "./journal.js";
 
 export class Recorder {
@@ -142,7 +143,15 @@ export class Recorder {
   ): Promise<{ outcomes: DeleteOutcome[]; entry: JournalEntry | null }> {
     const outcomes = await bulkDeleteBranches(this.git.client, specs);
     const deleted = outcomes.flatMap((o) =>
-      o.ok && o.restoreSha ? [{ name: o.name, sha: o.restoreSha }] : [],
+      o.ok && o.restoreSha
+        ? [
+            {
+              name: o.name,
+              sha: o.restoreSha,
+              ...(o.worktreePath ? { worktreePath: o.worktreePath } : {}),
+            },
+          ]
+        : [],
     );
     const entry = deleted.length ? this.record({ op: "delete-branches", branches: deleted }) : null;
     return { outcomes, entry };
@@ -201,6 +210,40 @@ export class Recorder {
     const before = await this.head();
     const res = await this.runAction(stashCommands.branch(name, entry.ref));
     if (res.ok) await this.recordCreate(name, before.branch, true);
+    return res;
+  }
+
+  /** Add a worktree for an existing branch, or for a new branch from `base`. */
+  async addWorktree(
+    path: string,
+    branch: string,
+    opts: { newBranchFrom?: string } = {},
+  ): Promise<ActionResult> {
+    const command = opts.newBranchFrom
+      ? worktreeCommands.addNew(path, branch, opts.newBranchFrom)
+      : worktreeCommands.addExisting(path, branch);
+    const res = await this.runAction(command);
+    if (res.ok) {
+      const sha = await this.tip(`refs/heads/${branch}`);
+      if (sha) {
+        this.record({
+          op: "worktree-add",
+          path,
+          branch,
+          createdBranch: Boolean(opts.newBranchFrom),
+          sha,
+        });
+      }
+    }
+    return res;
+  }
+
+  /** Remove a worktree. Only a removal that lost nothing is recorded as undoable. */
+  async removeWorktree(wt: WorktreeInfo, force: boolean): Promise<ActionResult> {
+    const res = await this.runAction(worktreeCommands.remove(wt.path, force));
+    if (res.ok && wt.head && !(force && (wt.dirtyCount ?? 0) > 0)) {
+      this.record({ op: "worktree-remove", path: wt.path, branch: wt.branch, head: wt.head });
+    }
     return res;
   }
 }
