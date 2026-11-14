@@ -32,7 +32,8 @@
     "demo:gif": "npm run build && vhs demo.tape",
     "lint": "biome check .",
     "format": "biome check --write .",
-    "bench": "BRANCHIT_BENCH=1 vitest run test/perf.integration.test.ts"
+    "bench": "BRANCHIT_BENCH=1 vitest run test/perf.integration.test.ts",
+    "demo:gifs": "npm run build && vhs docs/tapes/sweep.tape && vhs docs/tapes/undo.tape && vhs docs/tapes/worktrees.tape"
   },
   "dependencies": {
     "execa": "^9.5.1",
