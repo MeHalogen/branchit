@@ -50,7 +50,8 @@ export class TempRepo {
   }
 
   async cleanup(): Promise<void> {
-    await rm(this.dir, { recursive: true, force: true });
+    // Windows keeps a directory busy briefly after a git child exits.
+    await rm(this.dir, { recursive: true, force: true, maxRetries: 10, retryDelay: 100 });
   }
 }
 
