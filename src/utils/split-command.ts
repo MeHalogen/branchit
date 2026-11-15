@@ -12,7 +12,10 @@ export function splitCommand(input: string): string[] {
     const ch = input[i]!;
     if (quote) {
       if (ch === quote) quote = null;
-      else if (ch === "\\" && quote === '"' && i + 1 < input.length) cur += input[++i];
+      // POSIX: inside "…" a backslash only escapes \ " $ ` — so quoted
+      // Windows paths like "C:\tools\x.js" survive intact.
+      else if (ch === "\\" && quote === '"' && /[\\"$`]/.test(input[i + 1] ?? ""))
+        cur += input[++i];
       else cur += ch;
       continue;
     }

@@ -20,7 +20,12 @@ afterEach(async () => {
   await Promise.all(repos.splice(0).map((r) => r.cleanup()));
 });
 
-const BUDGET_MS = process.env["BRANCHIT_BENCH"] ? 1000 : 10_000;
+// Windows process spawns are several times slower than Unix ones.
+const BUDGET_MS = process.env["BRANCHIT_BENCH"]
+  ? 1000
+  : process.platform === "win32"
+    ? 30_000
+    : 10_000;
 
 describe("large repository performance", () => {
   it("lists and sweeps 2,000 branches within budget", async () => {

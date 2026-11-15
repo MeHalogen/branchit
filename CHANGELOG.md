@@ -27,6 +27,12 @@ All notable changes to Branchit are documented here. This project follows
   escapes when split into arguments, still without invoking a shell.
 - The status bar wraps instead of squeezing key labels on narrow terminals.
 
+### Fixed
+- Inside double quotes, a backslash only escapes `\ " $ \``, so quoted
+  Windows paths in `[checks]` / `[ai]` commands keep their separators.
+- Undo never pops a stash the operation didn't create.
+- Worktree paths use Git's forward-slash form on Windows.
+
 ## 0.5.0 — Worktrees for the parallel-agent era
 
 ### Added
