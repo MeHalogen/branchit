@@ -58,6 +58,14 @@ describe("splitCommand", () => {
     expect(splitCommand(`node -e "process.exit(1)"`)).toEqual(["node", "-e", "process.exit(1)"]);
     expect(splitCommand(`a\\ b c`)).toEqual(["a b", "c"]);
   });
+  it('keeps Windows paths intact inside double quotes (POSIX: \\ only escapes \\ " $ `)', () => {
+    expect(splitCommand(`node "C:\\tools\\llm.js" --x`)).toEqual([
+      "node",
+      "C:\\tools\\llm.js",
+      "--x",
+    ]);
+    expect(splitCommand(`echo "say \\"hi\\""`)).toEqual(["echo", 'say "hi"']);
+  });
   it("never expands shell syntax", () => {
     expect(splitCommand("echo $HOME; rm -rf ~")).toEqual(["echo", "$HOME;", "rm", "-rf", "~"]);
   });
