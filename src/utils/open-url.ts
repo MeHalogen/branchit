@@ -12,7 +12,9 @@ export async function openUrl(url: string): Promise<boolean> {
     platform === "darwin"
       ? (["open", [url]] as const)
       : platform === "win32"
-        ? (["cmd", ["/c", "start", "", url]] as const)
+        ? // Not `cmd /c start`: cmd re-parses the line, so `&` in a URL (e.g.
+          // from a branch name) would run a second command.
+          (["rundll32", ["url.dll,FileProtocolHandler", url]] as const)
         : (["xdg-open", [url]] as const);
   try {
     const res = await execa(cmd, [...args], { reject: false, shell: false });

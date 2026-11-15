@@ -5,10 +5,11 @@
  * network (fetch is an explicit user action). Branch metadata, status, and
  * recency all come from batched local git calls.
  */
-import { GitRepository } from "../git/repository.js";
-import { recentBranchRanks } from "../git/recent.js";
+
 import type { Branch, RepositoryState } from "../git/models.js";
 import type { ParsedStatus } from "../git/parsers.js";
+import { recentBranchRanks } from "../git/recent.js";
+import type { GitRepository } from "../git/repository.js";
 
 export interface RepoData {
   state: RepositoryState;

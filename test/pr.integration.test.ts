@@ -1,12 +1,8 @@
-import { describe, it, expect, afterEach } from "vitest";
-import {
-  createRepo,
-  createBareRemote,
-  type TempRepo,
-} from "./fixtures/gitRepo.js";
+import { afterEach, describe, expect, it } from "vitest";
 import { detectRepository, GitRepository } from "../src/git/repository.js";
-import { gatherPrReadiness } from "../src/workflows/pr.js";
 import { pushCurrent } from "../src/git/sync.js";
+import { gatherPrReadiness } from "../src/workflows/pr.js";
+import { createBareRemote, createRepo, type TempRepo } from "./fixtures/gitRepo.js";
 
 const repos: TempRepo[] = [];
 afterEach(async () => {

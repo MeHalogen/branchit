@@ -48,16 +48,17 @@ export function middleTruncate(text: string, max: number): string {
  * terminal control sequences into the UI. Matches C0 controls (incl. ESC),
  * DEL, and C1 controls; newlines and tabs collapse so metadata stays one line.
  *
- * Built via RegExp() so the source file contains no literal control bytes.
+ * Escapes keep the source free of literal control bytes.
  */
-const CONTROL_RE = new RegExp("[\\u0000-\\u001f\\u007f-\\u009f]", "g");
+// biome-ignore lint/suspicious/noControlCharactersInRegex: matching control chars is the point
+const CONTROL_RE = /[\u0000-\u001f\u007f-\u009f]/g;
 export function sanitizeForDisplay(text: string): string {
   return text.replace(CONTROL_RE, "");
 }
 
 /** Home-abbreviated path for display (~/work/payments-api). */
 export function abbreviateHome(path: string, home: string | undefined): string {
-  if (home && path.startsWith(home)) return "~" + path.slice(home.length);
+  if (home && path.startsWith(home)) return `~${path.slice(home.length)}`;
   return path;
 }
 

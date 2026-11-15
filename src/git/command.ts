@@ -1,7 +1,7 @@
 /**
  * Centralized Git command construction.
  *
- * Every Git invocation in Branchy is built here as a structured
+ * Every Git invocation in Branchit is built here as a structured
  * {@link GitCommand}: a program plus an argument array. Nothing in this file
  * ever concatenates a user-controlled value into a shell string.
  *
@@ -58,13 +58,7 @@ export const query = {
     return cmd(["rev-parse", "--verify", "--quiet", "HEAD"]);
   },
   statusPorcelain(): GitCommand {
-    return cmd([
-      "status",
-      "--porcelain=v2",
-      "--branch",
-      "--untracked-files=all",
-      "-z",
-    ]);
+    return cmd(["status", "--porcelain=v2", "--branch", "--untracked-files=all", "-z"]);
   },
   /**
    * All branches with rich metadata in a single batched call, using an ASCII
@@ -89,12 +83,7 @@ export const query = {
         "%(committerdate:iso-strict)",
         "%(worktreepath)",
       ].join(FIELD) + RECORD;
-    return cmd([
-      "for-each-ref",
-      "--format=" + format,
-      "refs/heads",
-      "refs/remotes",
-    ]);
+    return cmd(["for-each-ref", `--format=${format}`, "refs/heads", "refs/remotes"]);
   },
   remoteVerbose(): GitCommand {
     return cmd(["remote", "-v"]);
@@ -128,12 +117,7 @@ export const query = {
   },
   /** Commits unique to <branch> vs <base>, for the unmerged inspection view. */
   uniqueCommits(base: string, branch: string): GitCommand {
-    return cmd([
-      "log",
-      "--format=%h\x1f%s",
-      `${base}..${branch}`,
-      "--max-count=50",
-    ]);
+    return cmd(["log", "--format=%h\x1f%s", `${base}..${branch}`, "--max-count=50"]);
   },
   aheadBehind(base: string, tip: string): GitCommand {
     // Output: "<behind>\t<ahead>" (left = base..tip? see rev-list docs).

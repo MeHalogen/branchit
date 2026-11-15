@@ -5,7 +5,7 @@
 
 ## Context
 
-Branchy is a keyboard-first, interactive TUI for everyday Git workflows. It must
+Branchit is a keyboard-first, interactive TUI for everyday Git workflows. It must
 feel instant, render richly, treat destructive operations safely, and be highly
 testable against real Git behavior. Two credible stacks were considered:
 
@@ -37,7 +37,7 @@ accessibility, future plugins):
    avoids subtle divergences (e.g. `merge-base`, worktree, reflog behavior).
    This choice is stack-independent but is cleaner in Node where we are already
    process-oriented.
-4. **Distribution.** `npm install -g branchy` is a low-friction path for the
+4. **Distribution.** `npm install -g branchit` is a low-friction path for the
    primary audience (developers who already have Node), and `tsup` produces a
    single ESM entry with a shebang.
 

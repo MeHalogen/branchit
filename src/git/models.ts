@@ -1,7 +1,7 @@
 /**
  * Core Git domain types.
  *
- * These describe repository state as Branchy understands it. They deliberately
+ * These describe repository state as Branchit understands it. They deliberately
  * avoid UI-specific fields (selection, focus, etc.) — that state lives in the
  * screen/state layer, not here.
  */
@@ -71,9 +71,7 @@ export interface WorkingTreeState {
   get isClean(): boolean;
 }
 
-export function makeWorkingTree(
-  files: Omit<WorkingTreeState, "isClean">,
-): WorkingTreeState {
+export function makeWorkingTree(files: Omit<WorkingTreeState, "isClean">): WorkingTreeState {
   return {
     ...files,
     get isClean() {
@@ -97,18 +95,12 @@ export interface Remote {
 }
 
 /** In-progress Git operations that must take priority over normal workflows. */
-export type OperationState =
-  | "none"
-  | "merge"
-  | "rebase"
-  | "cherry_pick"
-  | "revert"
-  | "bisect";
+export type OperationState = "none" | "merge" | "rebase" | "cherry_pick" | "revert" | "bisect";
 
 export interface RepositoryState {
   rootPath: string;
   gitDir: string;
-  /** Directory Branchy was launched from (may be a subdirectory of root). */
+  /** Directory Branchit was launched from (may be a subdirectory of root). */
   cwd: string;
   currentBranch: string | null;
   head: CommitRef | null;

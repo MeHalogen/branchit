@@ -1,8 +1,8 @@
 /**
  * Tiny persisted UI state (currently just: has the user seen onboarding).
- * Stored next to config so it honors BRANCHY_CONFIG_DIR.
+ * Stored next to config so it honors BRANCHIT_CONFIG_DIR.
  */
-import { readFileSync, writeFileSync, mkdirSync } from "node:fs";
+import { mkdirSync, readFileSync, writeFileSync } from "node:fs";
 import { join } from "node:path";
 import { configDir } from "./paths.js";
 
@@ -30,7 +30,7 @@ export function markOnboarded(): void {
   const state = { ...read(), onboarded: true };
   try {
     mkdirSync(configDir(), { recursive: true });
-    writeFileSync(statePath(), JSON.stringify(state, null, 2) + "\n");
+    writeFileSync(statePath(), `${JSON.stringify(state, null, 2)}\n`);
   } catch {
     // Non-fatal: onboarding simply shows again next time.
   }

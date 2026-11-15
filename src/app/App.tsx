@@ -1,46 +1,45 @@
-import React, { useCallback, useEffect, useMemo, useState } from "react";
 import { Box, Text, useApp, useInput, useStdout } from "ink";
-import type { GitRepository } from "../git/repository.js";
-import type { Branch } from "../git/models.js";
-import { loadRepoData, type RepoData } from "./loadRepo.js";
-import {
-  switchBranch,
-  switchTrackNew,
-  createBranch,
-  stashBeforeSwitch,
-  bulkDeleteBranches,
-  recreateBranches,
-  stagePaths,
-  unstagePaths,
-  commitChanges,
-  type DeleteSpec,
-  type DeleteOutcome,
-} from "../git/actions.js";
-import { fetchRemote, pushCurrent } from "../git/sync.js";
-import { CommitFlow } from "../screens/CommitFlow.js";
-import type { WorkingTreeState } from "../git/models.js";
-import { gatherPrReadiness, type PrContext } from "../workflows/pr.js";
-import { PrReadiness } from "../screens/PrReadiness.js";
-import { openUrl } from "../utils/open-url.js";
-import { detectChecks, runChecks, commandsFromStrings } from "../workflows/checks.js";
-import { isTrusted, trustRepo } from "../config/trust.js";
+import { useCallback, useEffect, useMemo, useState } from "react";
+import { type ConfirmAction, ConfirmModal } from "../components/ConfirmModal.js";
+import { type Hint, StatusBar } from "../components/StatusBar.js";
+import { Toast, type ToastState } from "../components/Toast.js";
 import { defaultConfig, type ResolvedConfig } from "../config/schema.js";
 import { markOnboarded } from "../config/state.js";
-import { Welcome } from "../screens/Welcome.js";
-import { gatherSweepCandidates, type SweepCandidate } from "../workflows/sweep.js";
-import { Sweeper } from "../screens/Sweeper.js";
-import { toastForError } from "./error-text.js";
-import { commandByShortcut, type CommandId } from "../keys/registry.js";
-import { Dashboard } from "../screens/Dashboard.js";
+import { isTrusted, trustRepo } from "../config/trust.js";
+import {
+  bulkDeleteBranches,
+  commitChanges,
+  createBranch,
+  type DeleteOutcome,
+  type DeleteSpec,
+  recreateBranches,
+  stagePaths,
+  stashBeforeSwitch,
+  switchBranch,
+  switchTrackNew,
+  unstagePaths,
+} from "../git/actions.js";
+import type { Branch, WorkingTreeState } from "../git/models.js";
+import type { GitRepository } from "../git/repository.js";
+import { fetchRemote, pushCurrent } from "../git/sync.js";
+import { type CommandId, commandByShortcut } from "../keys/registry.js";
 import { BranchSwitcher } from "../screens/BranchSwitcher.js";
-import { NewBranch } from "../screens/NewBranch.js";
 import { CommandPalette } from "../screens/CommandPalette.js";
+import { CommitFlow } from "../screens/CommitFlow.js";
+import { Dashboard } from "../screens/Dashboard.js";
 import { HelpOverlay } from "../screens/HelpOverlay.js";
-import { ConfirmModal, type ConfirmAction } from "../components/ConfirmModal.js";
-import { StatusBar, type Hint } from "../components/StatusBar.js";
-import { Toast, type ToastState } from "../components/Toast.js";
-import { useColor } from "./theme-context.js";
+import { NewBranch } from "../screens/NewBranch.js";
+import { PrReadiness } from "../screens/PrReadiness.js";
+import { Sweeper } from "../screens/Sweeper.js";
+import { Welcome } from "../screens/Welcome.js";
 import { sanitizeForDisplay } from "../utils/format.js";
+import { openUrl } from "../utils/open-url.js";
+import { commandsFromStrings, detectChecks, runChecks } from "../workflows/checks.js";
+import { gatherPrReadiness, type PrContext } from "../workflows/pr.js";
+import { gatherSweepCandidates, type SweepCandidate } from "../workflows/sweep.js";
+import { toastForError } from "./error-text.js";
+import { loadRepoData, type RepoData } from "./loadRepo.js";
+import { useColor } from "./theme-context.js";
 
 type View =
   | "dashboard"
@@ -154,10 +153,10 @@ export function App(props: {
           title: "Branch switch blocked by local changes",
           lines: [
             `Switching to ${name} would overwrite uncommitted changes.`,
-            "Branchy can stash them (including untracked files) first.",
+            "Branchit can stash them (including untracked files) first.",
           ],
           commandPreview: [
-            `git stash push --include-untracked --message "branchy: switch to ${name}"`,
+            `git stash push --include-untracked --message "branchit: switch to ${name}"`,
             `git switch ${name}`,
           ],
           actions: [
@@ -170,7 +169,7 @@ export function App(props: {
             setBusy("Stashing changes…");
             const stashRes = await stashBeforeSwitch(
               git.client,
-              `branchy: switch to ${name}`,
+              `branchit: switch to ${name}`,
             );
             if (!stashRes.ok) {
               setBusy(null);
@@ -464,7 +463,7 @@ export function App(props: {
 
   const onPush = useCallback(async () => {
     const ctx = prCtx;
-    if (!ctx || !ctx.pushRemote) {
+    if (!ctx?.pushRemote) {
       notify({ kind: "warning", message: "No remote to push to" });
       return;
     }

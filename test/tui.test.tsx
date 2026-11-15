@@ -1,12 +1,13 @@
-import React from "react";
-import { describe, it, expect, afterEach } from "vitest";
+
 import { render } from "ink-testing-library";
-import { createRepo, type TempRepo } from "./fixtures/gitRepo.js";
-import { detectRepository, GitRepository } from "../src/git/repository.js";
-import { loadRepoData } from "../src/app/loadRepo.js";
+import { afterEach, describe, expect, it } from "vitest";
 import { App } from "../src/app/App.js";
+import { loadRepoData } from "../src/app/loadRepo.js";
 import { ThemeProvider } from "../src/app/theme-context.js";
+import { detectRepository, GitRepository } from "../src/git/repository.js";
 import { resolveTheme } from "../src/theme/tokens.js";
+import { createRepo, type TempRepo } from "./fixtures/gitRepo.js";
+import { waitUntil } from "./fixtures/wait.js";
 
 const repos: TempRepo[] = [];
 afterEach(async () => {
@@ -42,7 +43,7 @@ describe("App TUI", () => {
     const { ui } = await setup();
     await delay(50);
     const frame = ui.lastFrame() ?? "";
-    expect(frame).toContain("branchy");
+    expect(frame).toContain("branchit");
     expect(frame).toContain("main");
     expect(frame).toContain("Quick actions");
     expect(frame).toContain("Switch branch");
@@ -66,10 +67,12 @@ describe("App TUI", () => {
 
     // Enter switches.
     ui.stdin.write("\r");
-    await delay(250);
-
-    const state = await git.getState();
-    expect(state.currentBranch).toBe("feat/payment-retry");
+    await waitUntil(
+      async () => (await git.getState()).currentBranch === "feat/payment-retry",
+      "the switch to feat/payment-retry",
+      10_000,
+      () => ui.lastFrame() ?? "",
+    );
     ui.unmount();
   });
 

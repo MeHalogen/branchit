@@ -1,5 +1,5 @@
 /**
- * `branchy doctor` — environment diagnostics.
+ * `branchit doctor` — environment diagnostics.
  *
  * Output is plain text and safe to paste into a bug report: no tokens, no
  * credentialed remote URLs, no repository paths beyond the current directory.
@@ -12,16 +12,16 @@ export async function runDoctor(opts: { version: string }): Promise<void> {
   const ok = (label: string, value: string) => lines.push(`  ✓ ${label}: ${value}`);
   const warn = (label: string, value: string) => lines.push(`  ! ${label}: ${value}`);
 
-  lines.push("branchy doctor");
+  lines.push("branchit doctor");
   lines.push("");
 
-  ok("branchy", opts.version);
+  ok("branchit", opts.version);
   ok("node", process.version);
   ok("platform", `${process.platform} ${process.arch}`);
 
   const gitVersion = await detectGitVersion();
   if (gitVersion) ok("git", gitVersion);
-  else warn("git", "not found on PATH — Branchy requires Git");
+  else warn("git", "not found on PATH — Branchit requires Git");
 
   const cwd = process.cwd();
   const detect = await detectRepository(cwd);
@@ -37,5 +37,5 @@ export async function runDoctor(opts: { version: string }): Promise<void> {
   ok("editor", process.env["EDITOR"] ?? process.env["VISUAL"] ?? "(unset)");
   ok("pager", process.env["PAGER"] ?? "(unset)");
 
-  process.stdout.write(lines.join("\n") + "\n");
+  process.stdout.write(`${lines.join("\n")}\n`);
 }

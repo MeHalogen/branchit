@@ -53,7 +53,7 @@ export function buildCommitMessage(draft: CommitDraft): string {
   if (draft.breaking) {
     parts.push(`BREAKING CHANGE: ${draft.subject.trim()}`);
   }
-  return parts.join("\n\n") + "\n";
+  return `${parts.join("\n\n")}\n`;
 }
 
 export interface SubjectValidation {
@@ -115,10 +115,13 @@ export function suggestType(files: FileChange[]): string | null {
   const some = (pred: (p: string) => boolean) => paths.some(pred);
 
   if (all((p) => p.endsWith(".md") || p.startsWith("docs/"))) return "docs";
-  if (all((p) => p.includes("test") || p.includes("spec") || p.startsWith("test/")))
-    return "test";
+  if (all((p) => p.includes("test") || p.includes("spec") || p.startsWith("test/"))) return "test";
   if (
-    some((p) => /(^|\/)(package\.json|package-lock\.json|pnpm-lock\.yaml|cargo\.toml|go\.mod|requirements\.txt)$/.test(p))
+    some((p) =>
+      /(^|\/)(package\.json|package-lock\.json|pnpm-lock\.yaml|cargo\.toml|go\.mod|requirements\.txt)$/.test(
+        p,
+      ),
+    )
   )
     return "build";
   return null;

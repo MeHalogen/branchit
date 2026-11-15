@@ -7,16 +7,11 @@
  * (with file + field + message) and that layer is skipped, so the app still
  * runs on the remaining valid config.
  */
-import { readFileSync, existsSync } from "node:fs";
+import { existsSync, readFileSync } from "node:fs";
 import { join } from "node:path";
 import { parse as parseToml } from "smol-toml";
 import { configDir } from "./paths.js";
-import {
-  ConfigFileSchema,
-  defaultConfig,
-  mergeConfig,
-  type ResolvedConfig,
-} from "./schema.js";
+import { ConfigFileSchema, defaultConfig, mergeConfig, type ResolvedConfig } from "./schema.js";
 
 export interface ConfigIssue {
   file: string;
@@ -92,7 +87,5 @@ export function loadConfig(root: string): LoadedConfig {
 
 /** Format issues for terminal display (one line each). */
 export function formatIssues(issues: ConfigIssue[]): string {
-  return issues
-    .map((i) => `  ${i.file}${i.field ? `:${i.field}` : ""} — ${i.message}`)
-    .join("\n");
+  return issues.map((i) => `  ${i.file}${i.field ? `:${i.field}` : ""} — ${i.message}`).join("\n");
 }

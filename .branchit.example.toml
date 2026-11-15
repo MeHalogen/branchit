@@ -1,8 +1,8 @@
-# Branchy repository configuration (.branchy.toml)
+# Branchit repository configuration (.branchit.toml)
 #
-# Copy to `.branchy.toml` and edit. Every field is optional; unspecified values
-# fall back to your user config (~/.config/branchy/config.toml) and then to
-# Branchy's built-in defaults. Run `branchy config` to see the resolved result.
+# Copy to `.branchit.toml` and edit. Every field is optional; unspecified values
+# fall back to your user config (~/.config/branchit/config.toml) and then to
+# Branchit's built-in defaults. Run `branchit config` to see the resolved result.
 
 [ui]
 # Show the underlying git command before meaningful actions.
@@ -35,7 +35,7 @@ max_subject_length = 72
 require_scope = false
 
 [checks]
-# Pre-commit checks. These run local programs, so Branchy requires you to
+# Pre-commit checks. These run local programs, so Branchit requires you to
 # explicitly TRUST this repository for exactly this command set before running
 # them (and re-prompts if the set changes). Leave unset to auto-detect known
 # package.json scripts instead.

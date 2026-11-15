@@ -1,8 +1,8 @@
-import { describe, it, expect, afterEach } from "vitest";
-import { createRepo, type TempRepo } from "./fixtures/gitRepo.js";
+import { afterEach, describe, expect, it } from "vitest";
+import { commitChanges, stagePaths, unstagePaths } from "../src/git/actions.js";
 import { detectRepository, GitRepository } from "../src/git/repository.js";
-import { stagePaths, unstagePaths, commitChanges } from "../src/git/actions.js";
 import { buildCommitMessage } from "../src/workflows/commit.js";
+import { createRepo, type TempRepo } from "./fixtures/gitRepo.js";
 
 const repos: TempRepo[] = [];
 afterEach(async () => {
@@ -67,7 +67,7 @@ describe("staging + commit (real git)", () => {
     );
     await repo.git(["update-index", "--add", "--chmod=+x", "--", "README.md"]).catch(() => {});
     const { chmod } = await import("node:fs/promises");
-    await chmod(repo.dir + "/.git/hooks/pre-commit", 0o755);
+    await chmod(`${repo.dir}/.git/hooks/pre-commit`, 0o755);
 
     await repo.writeFileAt("x.ts", "1\n");
     await stagePaths(git.client, ["x.ts"]);

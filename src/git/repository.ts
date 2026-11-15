@@ -5,9 +5,13 @@
  * state. This is the read/query surface the UI and workflows consume; it never
  * exposes raw git strings.
  */
+
+import { existsSync } from "node:fs";
+import { join } from "node:path";
 import { GitClient } from "./client.js";
 import { query } from "./command.js";
-import { GitError } from "./errors.js";
+import type { GitError } from "./errors.js";
+import type { Branch, CommitRef, OperationState, RepositoryState } from "./models.js";
 import {
   parseForEachRefBranches,
   parseRemotes,
@@ -15,14 +19,6 @@ import {
   parseWorktreeList,
   type WorktreeEntry,
 } from "./parsers.js";
-import type {
-  Branch,
-  CommitRef,
-  OperationState,
-  RepositoryState,
-} from "./models.js";
-import { existsSync } from "node:fs";
-import { join } from "node:path";
 
 export interface DetectResult {
   isRepo: boolean;
@@ -68,10 +64,7 @@ export async function detectRepository(cwd: string): Promise<DetectResult> {
 
 /** Detect an in-progress git operation from marker files in the git dir. */
 export function detectOperationState(gitDir: string): OperationState {
-  if (
-    existsSync(join(gitDir, "rebase-merge")) ||
-    existsSync(join(gitDir, "rebase-apply"))
-  ) {
+  if (existsSync(join(gitDir, "rebase-merge")) || existsSync(join(gitDir, "rebase-apply"))) {
     return "rebase";
   }
   if (existsSync(join(gitDir, "MERGE_HEAD"))) return "merge";
@@ -105,12 +98,10 @@ export class GitRepository {
 
   /** Assemble a full repository snapshot in a small, batched set of calls. */
   async getState(): Promise<RepositoryState> {
-    const [headExists, currentBranch, statusRes, remotesRes] = await Promise.all([
+    const [headExists, currentBranch, _statusRes, remotesRes] = await Promise.all([
       this.client.run(query.headExists()),
       this.client.run(query.currentBranch()),
-      this.isBare
-        ? Promise.resolve(null)
-        : this.client.run(query.statusPorcelain()),
+      this.isBare ? Promise.resolve(null) : this.client.run(query.statusPorcelain()),
       this.client.run(query.remoteVerbose()),
     ]);
 
@@ -152,10 +143,9 @@ export class GitRepository {
   }
 
   private async getHeadCommit(): Promise<CommitRef | null> {
-    const fmt =
-      "%H\x1f%h\x1f%s\x1f%an\x1f%cI";
+    const fmt = "%H\x1f%h\x1f%s\x1f%an\x1f%cI";
     const res = await this.client.run({
-      args: ["log", "-1", "--format=" + fmt],
+      args: ["log", "-1", `--format=${fmt}`],
       display: "git log -1 --format=…",
     });
     if (!res.ok) return null;

@@ -1,6 +1,6 @@
 # Git safety
 
-Branchy touches real repositories. These are the guarantees the implementation
+Branchit touches real repositories. These are the guarantees the implementation
 makes, and where they live.
 
 ## Shell-injection prevention
@@ -24,7 +24,7 @@ screens passes through it.
 ## Destructive operations
 
 - **No silent stashing.** If a switch is blocked by local changes
-  (`dirty_worktree`), Branchy shows an explicit modal with the exact command
+  (`dirty_worktree`), Branchit shows an explicit modal with the exact command
   preview and only stashes on confirmation.
 - **Partial completion is reported honestly.** If a stash succeeds but the
   following switch fails, the user is told their changes are safe in the stash —
@@ -60,17 +60,17 @@ explicitly-confirmed path. Every bulk delete records tips so it can be undone.
 ## Repository trust (implemented)
 
 Pre-commit check commands (detected from `package.json` scripts) can execute
-arbitrary code — a malicious repo could define `"lint": "rm -rf ~"`. Branchy
+arbitrary code — a malicious repo could define `"lint": "rm -rf ~"`. Branchit
 therefore **never runs them automatically**:
 
-- Detection (`src/workflows/checks.ts`) only *suggests* commands; it never runs
+- Detection (`src/workflows/checks.ts`) only _suggests_ commands; it never runs
   them.
 - A repository must be **explicitly trusted** for a specific command set before
   execution. Trust is stored hash-keyed by repo root under the user config dir
   (`src/config/trust.ts`); if the command set later changes, the hash no longer
-  matches and Branchy **re-prompts**.
-- The trust prompt shows the exact commands and offers *run once* (no
-  persistence), *trust this repository*, *skip checks*, or *cancel*.
+  matches and Branchit **re-prompts**.
+- The trust prompt shows the exact commands and offers _run once_ (no
+  persistence), _trust this repository_, _skip checks_, or _cancel_.
 - Checks execute with argv + `shell:false`, block the commit on first failure,
   and can be cancelled. "Commit anyway" is a separate, explicit choice. Git's
   own hooks still run on the real commit and are never bypassed.

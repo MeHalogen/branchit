@@ -6,10 +6,10 @@
  * done here with argument arrays and `shell: false`. A check name existing is
  * never treated as proof it is safe to run.
  */
-import { execa } from "execa";
-import { readFileSync } from "node:fs";
-import { existsSync } from "node:fs";
+
+import { existsSync, readFileSync } from "node:fs";
 import { join } from "node:path";
+import { execa } from "execa";
 
 export interface CheckCommand {
   /** Short label, e.g. "lint". */
@@ -36,7 +36,7 @@ export interface CheckRunResult {
   results: CheckState[];
 }
 
-// npm-script names Branchy knows how to suggest, in a sensible run order.
+// npm-script names Branchit knows how to suggest, in a sensible run order.
 const KNOWN_SCRIPTS = ["typecheck", "lint", "test", "check", "format:check"];
 
 function detectPackageManager(root: string): string {

@@ -1,5 +1,5 @@
-import React, { useState } from "react";
 import { Box, Text, useInput } from "ink";
+import { useState } from "react";
 import { useColor } from "../app/theme-context.js";
 
 export interface ConfirmAction {

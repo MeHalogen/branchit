@@ -1,9 +1,9 @@
-import { describe, it, expect, beforeEach, afterEach } from "vitest";
-import { mkdtemp, rm, writeFile, mkdir } from "node:fs/promises";
+import { mkdtemp, rm, writeFile } from "node:fs/promises";
 import { tmpdir } from "node:os";
 import { join } from "node:path";
+import { afterEach, beforeEach, describe, expect, it } from "vitest";
 import { loadConfig } from "../src/config/load.js";
-import { defaultConfig, mergeConfig, ConfigFileSchema } from "../src/config/schema.js";
+import { ConfigFileSchema, defaultConfig, mergeConfig } from "../src/config/schema.js";
 
 let cfgDir: string;
 let repoDir: string;
@@ -81,7 +81,7 @@ describe("validation", () => {
   });
 
   it("rejects unknown keys", async () => {
-    await writeFile(join(repoDir, ".branchit.toml"), '[ui]\nbogus = 1\n');
+    await writeFile(join(repoDir, ".branchit.toml"), "[ui]\nbogus = 1\n");
     const { issues } = loadConfig(repoDir);
     expect(issues.some((i) => i.message.toLowerCase().includes("unrecognized"))).toBe(true);
   });

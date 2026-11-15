@@ -1,12 +1,12 @@
-import { describe, it, expect } from "vitest";
+import { describe, expect, it } from "vitest";
+import { type FileChange, makeWorkingTree } from "../src/git/models.js";
 import {
   buildCommitMessage,
-  validateSubject,
   inferScope,
-  suggestType,
   stageableFiles,
+  suggestType,
+  validateSubject,
 } from "../src/workflows/commit.js";
-import { makeWorkingTree, type FileChange } from "../src/git/models.js";
 
 const fc = (path: string, kind: FileChange["kind"] = "modified"): FileChange => ({
   path,
@@ -17,7 +17,13 @@ const fc = (path: string, kind: FileChange["kind"] = "modified"): FileChange => 
 describe("buildCommitMessage", () => {
   it("builds a header with type, scope and subject", () => {
     expect(
-      buildCommitMessage({ type: "fix", scope: "auth", breaking: false, subject: "refresh tokens", body: "" }),
+      buildCommitMessage({
+        type: "fix",
+        scope: "auth",
+        breaking: false,
+        subject: "refresh tokens",
+        body: "",
+      }),
     ).toBe("fix(auth): refresh tokens\n");
   });
   it("omits the scope parens when scope is empty", () => {
@@ -44,7 +50,7 @@ describe("validateSubject", () => {
     expect(validateSubject("").ok).toBe(false);
   });
   it("warns (non-blocking) on length and trailing period", () => {
-    const long = "x".repeat(80) + ".";
+    const long = `${"x".repeat(80)}.`;
     const v = validateSubject(long);
     expect(v.ok).toBe(true);
     expect(v.warnings.some((w) => w.includes("chars"))).toBe(true);

@@ -5,10 +5,11 @@
  * with real `git` invocations — no mocks. A bare repo can act as a fake remote,
  * so tests never touch the network.
  */
-import { execa } from "execa";
-import { mkdtemp, rm, writeFile, mkdir } from "node:fs/promises";
+
+import { mkdir, mkdtemp, rm, writeFile } from "node:fs/promises";
 import { tmpdir } from "node:os";
-import { join } from "node:path";
+import { dirname, join } from "node:path";
+import { execa } from "execa";
 
 export class TempRepo {
   constructor(public readonly dir: string) {}
@@ -22,17 +23,14 @@ export class TempRepo {
       extendEnv: true,
     });
     if (res.exitCode !== 0) {
-      throw new Error(
-        `git ${args.join(" ")} failed (${res.exitCode}): ${res.stderr}`,
-      );
+      throw new Error(`git ${args.join(" ")} failed (${res.exitCode}): ${res.stderr}`);
     }
     return res.stdout;
   }
 
   async writeFileAt(relPath: string, content: string): Promise<void> {
     const abs = join(this.dir, relPath);
-    const slash = abs.lastIndexOf("/");
-    if (slash > -1) await mkdir(abs.slice(0, slash), { recursive: true });
+    await mkdir(dirname(abs), { recursive: true });
     await writeFile(abs, content);
   }
 
@@ -52,7 +50,8 @@ export class TempRepo {
   }
 
   async cleanup(): Promise<void> {
-    await rm(this.dir, { recursive: true, force: true });
+    // Windows keeps a directory busy briefly after a git child exits.
+    await rm(this.dir, { recursive: true, force: true, maxRetries: 10, retryDelay: 100 });
   }
 }
 
@@ -60,11 +59,11 @@ export class TempRepo {
 export async function createRepo(
   opts: { initialBranch?: string; withInitialCommit?: boolean } = {},
 ): Promise<TempRepo> {
-  const dir = await mkdtemp(join(tmpdir(), "branchy-test-"));
+  const dir = await mkdtemp(join(tmpdir(), "branchit-test-"));
   const repo = new TempRepo(dir);
   await repo.git(["init", "-b", opts.initialBranch ?? "main"]);
-  await repo.git(["config", "user.email", "test@branchy.dev"]);
-  await repo.git(["config", "user.name", "Branchy Test"]);
+  await repo.git(["config", "user.email", "test@branchit.dev"]);
+  await repo.git(["config", "user.name", "Branchit Test"]);
   await repo.git(["config", "commit.gpgsign", "false"]);
   if (opts.withInitialCommit !== false) {
     await repo.commitFile("README.md", "# test\n", "chore: initial commit");
@@ -74,7 +73,7 @@ export async function createRepo(
 
 /** Create a bare repo usable as a fake remote. */
 export async function createBareRemote(): Promise<TempRepo> {
-  const dir = await mkdtemp(join(tmpdir(), "branchy-remote-"));
+  const dir = await mkdtemp(join(tmpdir(), "branchit-remote-"));
   const repo = new TempRepo(dir);
   await repo.git(["init", "--bare", "-b", "main"]);
   return repo;

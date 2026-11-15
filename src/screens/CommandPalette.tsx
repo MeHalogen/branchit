@@ -1,8 +1,8 @@
-import React, { useMemo, useState } from "react";
 import { Box, Text, useInput } from "ink";
+import { useMemo, useState } from "react";
+import { useColor } from "../app/theme-context.js";
 import { COMMANDS, type Command, type CommandId } from "../keys/registry.js";
 import { rankBranches } from "../search/rank.js";
-import { useColor } from "../app/theme-context.js";
 import { sanitizeForDisplay } from "../utils/format.js";
 
 /**

@@ -1,16 +1,16 @@
-import React from "react";
-import { describe, it, expect, afterEach } from "vitest";
+
 import { render } from "ink-testing-library";
+import { afterEach, describe, expect, it } from "vitest";
+import { App } from "../src/app/App.js";
+import { loadRepoData } from "../src/app/loadRepo.js";
+import { ThemeProvider } from "../src/app/theme-context.js";
+import { detectRepository, GitRepository } from "../src/git/repository.js";
+import { resolveTheme } from "../src/theme/tokens.js";
 import {
-  createRepo,
   createBareRemote,
+  createRepo,
   type TempRepo,
 } from "./fixtures/gitRepo.js";
-import { detectRepository, GitRepository } from "../src/git/repository.js";
-import { loadRepoData } from "../src/app/loadRepo.js";
-import { App } from "../src/app/App.js";
-import { ThemeProvider } from "../src/app/theme-context.js";
-import { resolveTheme } from "../src/theme/tokens.js";
 
 const repos: TempRepo[] = [];
 afterEach(async () => {

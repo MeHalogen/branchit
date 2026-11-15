@@ -1,7 +1,7 @@
-import { describe, it, expect } from "vitest";
-import { parseRemoteUrl, buildCompareUrl } from "../src/git/host.js";
-import { computePrReadiness } from "../src/workflows/pr.js";
+import { describe, expect, it } from "vitest";
+import { buildCompareUrl, parseRemoteUrl } from "../src/git/host.js";
 import type { UpstreamInfo } from "../src/git/models.js";
+import { computePrReadiness } from "../src/workflows/pr.js";
 
 describe("parseRemoteUrl", () => {
   it("parses SSH scp-style GitHub remotes", () => {

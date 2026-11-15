@@ -1,5 +1,5 @@
 /**
- * `branchy status [--plain]` — scriptable repository status.
+ * `branchit status [--plain]` — scriptable repository status.
  *
  * The plain form emits stable key=value lines suitable for shell scripts; the
  * default form is a short human summary. Neither launches the TUI.
@@ -35,13 +35,17 @@ export async function printPlainStatus(
       `clean=${wt.isClean}`,
       `operation=${state.operation}`,
     ];
-    process.stdout.write(out.join("\n") + "\n");
+    process.stdout.write(`${out.join("\n")}\n`);
     return;
   }
 
   const parts: string[] = [];
   parts.push(`${repoNameFromRoot(state.rootPath)} on ${state.currentBranch ?? "(detached)"}`);
   if (up) parts.push(`${up.ref} ↑${up.ahead} ↓${up.behind}`);
-  parts.push(wt.isClean ? "clean" : `${wt.staged.length} staged, ${wt.unstaged.length} modified, ${wt.untracked.length} untracked`);
-  process.stdout.write(parts.join("  ·  ") + "\n");
+  parts.push(
+    wt.isClean
+      ? "clean"
+      : `${wt.staged.length} staged, ${wt.unstaged.length} modified, ${wt.untracked.length} untracked`,
+  );
+  process.stdout.write(`${parts.join("  ·  ")}\n`);
 }

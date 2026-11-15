@@ -1,7 +1,7 @@
-import React from "react";
+
 import { Box, Text, useInput } from "ink";
-import { COMMANDS } from "../keys/registry.js";
 import { useColor } from "../app/theme-context.js";
+import { COMMANDS } from "../keys/registry.js";
 
 /** Contextual help. Shows the current screen's keys first, then global keys. */
 export function HelpOverlay(props: {
@@ -79,7 +79,7 @@ export function HelpOverlay(props: {
           What does “merged” mean?
         </Text>
         <Text color={color("dim")}>
-          Branchy verifies a branch tip is reachable from the base branch before
+          Branchit verifies a branch tip is reachable from the base branch before
           offering Git&apos;s safe <Text color={color("text")}>-d</Text> deletion.
           It never force-deletes on a name or age heuristic.
         </Text>

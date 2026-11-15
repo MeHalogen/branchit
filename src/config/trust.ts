@@ -2,16 +2,16 @@
  * Repository trust store.
  *
  * Pre-commit checks execute programs defined by (or inferred from) a repository.
- * A malicious repo could define `"lint": "rm -rf ~"`, so Branchy NEVER runs
+ * A malicious repo could define `"lint": "rm -rf ~"`, so Branchit NEVER runs
  * these automatically: a repository must be explicitly trusted for a specific
  * set of commands. If the command set later changes, the recorded hash no
- * longer matches and Branchy re-prompts.
+ * longer matches and Branchit re-prompts.
  *
  * The store lives under the per-user config dir and maps repository root →
  * the hash of the last-trusted command set.
  */
 import { createHash } from "node:crypto";
-import { readFileSync, writeFileSync, mkdirSync } from "node:fs";
+import { mkdirSync, readFileSync, writeFileSync } from "node:fs";
 import { join } from "node:path";
 import { configDir } from "./paths.js";
 
@@ -55,7 +55,7 @@ export function trustRepo(root: string, displays: string[]): void {
   store.repos[root] = { hash: hashCommands(displays), commands: displays };
   const dir = configDir();
   mkdirSync(dir, { recursive: true });
-  writeFileSync(trustFilePath(), JSON.stringify(store, null, 2) + "\n", {
+  writeFileSync(trustFilePath(), `${JSON.stringify(store, null, 2)}\n`, {
     mode: 0o600,
   });
 }

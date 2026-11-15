@@ -1,15 +1,16 @@
-import React from "react";
-import { describe, it, expect, afterEach } from "vitest";
-import { render } from "ink-testing-library";
+
 import { mkdtemp, rm } from "node:fs/promises";
 import { tmpdir } from "node:os";
 import { join } from "node:path";
-import { createRepo, type TempRepo } from "./fixtures/gitRepo.js";
-import { detectRepository, GitRepository } from "../src/git/repository.js";
-import { loadRepoData } from "../src/app/loadRepo.js";
+import { render } from "ink-testing-library";
+import { afterEach, describe, expect, it } from "vitest";
 import { App } from "../src/app/App.js";
+import { loadRepoData } from "../src/app/loadRepo.js";
 import { ThemeProvider } from "../src/app/theme-context.js";
+import { detectRepository, GitRepository } from "../src/git/repository.js";
 import { resolveTheme } from "../src/theme/tokens.js";
+import { createRepo, type TempRepo } from "./fixtures/gitRepo.js";
+import { waitForFrame } from "./fixtures/wait.js";
 
 const repos: TempRepo[] = [];
 const cfgDirs: string[] = [];
@@ -88,9 +89,7 @@ describe("Pre-commit checks TUI", () => {
     expect(trust).toContain("npm run check");
 
     ui.stdin.write("\r"); // run once
-    await delay(3000); // allow `npm run` to spin up and finish
-
-    expect(ui.lastFrame()).toContain("Committed");
+    await waitForFrame(ui, "Committed", 20_000); // `npm run` can be slow on CI
     const count = await repo.git(["rev-list", "--count", "HEAD"]);
     expect(count).toBe("2"); // initial + this commit
     const status = await git.getStatus();
@@ -105,16 +104,12 @@ describe("Pre-commit checks TUI", () => {
     ui.stdin.write("\r"); // proceed -> trust prompt
     await delay(80);
     ui.stdin.write("\r"); // run once
-    await delay(3000);
-
-    const failed = ui.lastFrame() ?? "";
-    expect(failed).toContain("failed");
+    await waitForFrame(ui, "failed", 20_000);
     // Nothing committed yet.
     expect(await repo.git(["rev-list", "--count", "HEAD"])).toBe("1");
 
     ui.stdin.write("c"); // commit anyway (explicit)
-    await delay(400);
-    expect(ui.lastFrame()).toContain("Committed");
+    await waitForFrame(ui, "Committed");
     expect(await repo.git(["rev-list", "--count", "HEAD"])).toBe("2");
     ui.unmount();
   });

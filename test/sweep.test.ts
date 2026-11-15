@@ -1,11 +1,11 @@
-import { describe, it, expect } from "vitest";
+import { describe, expect, it } from "vitest";
+import type { Branch } from "../src/git/models.js";
 import {
+  type BranchMergeInfo,
   classifyBranch,
   isProtectedName,
-  type BranchMergeInfo,
   type SweepConfig,
 } from "../src/workflows/sweep.js";
-import type { Branch } from "../src/git/models.js";
 
 function branch(partial: Partial<Branch> & { name: string }): Branch {
   return {
@@ -69,7 +69,16 @@ describe("classifyBranch", () => {
 
   it("labels patch-equivalent non-ancestors as squash-suspected (likely)", () => {
     const c = classifyBranch(
-      branch({ name: "feat/squashed", upstream: { ref: "origin/feat/squashed", remoteName: "origin", ahead: 0, behind: 0, gone: true } }),
+      branch({
+        name: "feat/squashed",
+        upstream: {
+          ref: "origin/feat/squashed",
+          remoteName: "origin",
+          ahead: 0,
+          behind: 0,
+          gone: true,
+        },
+      }),
       info({ merged: false, uniqueCommitCount: 2, patchEquivalent: true }),
       config,
     );
@@ -94,7 +103,11 @@ describe("classifyBranch", () => {
   });
 
   it("protects the current branch even if it appears merged", () => {
-    const c = classifyBranch(branch({ name: "main", isCurrent: true }), info({ merged: true }), config);
+    const c = classifyBranch(
+      branch({ name: "main", isCurrent: true }),
+      info({ merged: true }),
+      config,
+    );
     expect(c.classification).toBe("protected");
     expect(c.deletionMode).toBe("none");
     expect(c.selected).toBe(false);
