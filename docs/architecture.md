@@ -6,7 +6,7 @@ build argument arrays that a single safe executor runs.
 
 ```
 ┌────────────────────────────────────────────────────────────┐
-│ cli.tsx            entrypoint: arg parsing, TTY handling,    │
+│ cli.ts             entrypoint: arg parsing, TTY handling,    │
 │                    subcommands (status/doctor/switch), Ink   │
 ├────────────────────────────────────────────────────────────┤
 │ app/               App state machine, screen routing,        │
@@ -65,3 +65,18 @@ mutation so the UI reflects Git as the source of truth.
 `config/` (schema via `zod`) and `integrations/` (GitHost provider interface for
 GitHub/GitLab) are designed for but intentionally not built in this slice — see
 [progress.md](progress.md).
+
+## Since 0.2: CLI split, journal, workflows
+
+- **Lazy entry.** `src/cli.ts` parses arguments and runs every scripted command
+  (`sweep`, `undo`, `branches`, `pr`, `status`, `worktrees`, `completions`,
+  `shell-init`) without importing Ink or React; the TUI (`src/tui.tsx`) is a
+  dynamic import. `test/cli-startup.test.ts` enforces this.
+- **Operation journal.** `src/journal/record.ts` (`Recorder`) is the choke
+  point for every mutation: it captures refs before, runs the plain action from
+  `src/git/`, and appends to `<git-dir>/branchit/journal.jsonl` on success.
+  `planUndo` (pure) turns an entry into inverse commands after validating it
+  against live refs; `executeUndo` runs them and records the undo.
+- **Workflows** stay UI-free: `workflows/sweep.ts` (classification, report
+  card, JSON), `workflows/worktrees.ts`, `workflows/ai-commit.ts`,
+  `git/workspace.ts` (diffs, hunk patches, pull conflicts), `git/stash.ts`.

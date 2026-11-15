@@ -21,7 +21,7 @@ export const ConfigFileSchema = z
       .object({
         command_preview: z.boolean().optional(),
         icons: z.boolean().optional(),
-        theme: z.enum(["default", "none"]).optional(),
+        theme: z.enum(["default", "catppuccin", "tokyo-night", "gruvbox", "none"]).optional(),
       })
       .strict()
       .optional(),
@@ -47,6 +47,21 @@ export const ConfigFileSchema = z
       })
       .strict()
       .optional(),
+    keys: z.record(z.string(), z.string()).optional(),
+    ai: z
+      .object({
+        /** Program that reads a staged diff on stdin and prints a message. */
+        command: z.string().min(1).optional(),
+      })
+      .strict()
+      .optional(),
+    worktrees: z
+      .object({
+        /** Where new worktrees go; {repo} and {branch} are substituted. */
+        root: z.string().min(1).optional(),
+      })
+      .strict()
+      .optional(),
   })
   .strict();
 
@@ -57,8 +72,8 @@ export interface ResolvedConfig {
   ui: {
     commandPreview: boolean;
     icons: boolean;
-    /** "default" = colored, "none" = no color. */
-    theme: "default" | "none";
+    /** A named palette, or "none" for no color. */
+    theme: "default" | "catppuccin" | "tokyo-night" | "gruvbox" | "none";
   };
   branches: {
     /** Explicit base override, or null to auto-detect. */
@@ -75,6 +90,15 @@ export interface ResolvedConfig {
     /** Explicit command strings, or null to auto-detect from package.json. */
     commands: string[] | null;
   };
+  worktrees: {
+    /** Path template, relative to the repository root unless absolute. */
+    root: string;
+  };
+  /** Short command name -> single key, e.g. { sweep: "x" }. */
+  keys: Record<string, string>;
+  ai: {
+    command: string | null;
+  };
 }
 
 export function defaultConfig(): ResolvedConfig {
@@ -88,6 +112,9 @@ export function defaultConfig(): ResolvedConfig {
       requireScope: false,
     },
     checks: { commands: null },
+    worktrees: { root: "../{repo}-wt/{branch}" },
+    keys: {},
+    ai: { command: null },
   };
 }
 
@@ -109,6 +136,9 @@ export function mergeConfig(base: ResolvedConfig, file: ConfigFile): ResolvedCon
     branches: { ...base.branches, protected: [...base.branches.protected] },
     commit: { ...base.commit, types: [...base.commit.types], scopes: [...base.commit.scopes] },
     checks: { ...base.checks },
+    worktrees: { ...base.worktrees },
+    keys: { ...base.keys },
+    ai: { ...base.ai },
   };
   if (file.ui) {
     if (file.ui.command_preview !== undefined) next.ui.commandPreview = file.ui.command_preview;
@@ -132,5 +162,8 @@ export function mergeConfig(base: ResolvedConfig, file: ConfigFile): ResolvedCon
   if (file.checks) {
     if (file.checks.commands !== undefined) next.checks.commands = file.checks.commands;
   }
+  if (file.worktrees?.root !== undefined) next.worktrees.root = file.worktrees.root;
+  if (file.keys) Object.assign(next.keys, file.keys);
+  if (file.ai?.command !== undefined) next.ai.command = file.ai.command;
   return next;
 }

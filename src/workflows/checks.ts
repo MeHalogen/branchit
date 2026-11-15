@@ -10,6 +10,7 @@
 import { existsSync, readFileSync } from "node:fs";
 import { join } from "node:path";
 import { execa } from "execa";
+import { splitCommand } from "../utils/split-command.js";
 
 export interface CheckCommand {
   /** Short label, e.g. "lint". */
@@ -82,7 +83,7 @@ export function commandsFromStrings(strings: string[]): CheckCommand[] {
     .map((s) => s.trim())
     .filter(Boolean)
     .map((display) => {
-      const argv = display.split(/\s+/);
+      const argv = splitCommand(display);
       return { name: argv[0] ?? display, display, argv };
     });
 }

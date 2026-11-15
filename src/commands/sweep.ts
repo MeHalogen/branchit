@@ -1,0 +1,124 @@
+/**
+ * `branchit sweep [--dry-run|--yes] [--json]` — the stale-branch sweep without
+ * the TUI. Dry-run is the default: it lists candidates and ends with a
+ * shareable one-line report card. `--yes` deletes only branches proven merged
+ * (`git branch -d`), journals the deletion for `branchit undo`, and prints the
+ * exact command to restore each one.
+ */
+import type { ResolvedConfig } from "../config/schema.js";
+import type { DeleteOutcome } from "../git/actions.js";
+import type { GitRepository } from "../git/repository.js";
+import { Journal } from "../journal/journal.js";
+import { Recorder } from "../journal/record.js";
+import { relativeTime, sanitizeForDisplay } from "../utils/format.js";
+import {
+  gatherSweepCandidates,
+  resolveSweepConfig,
+  type SweepCandidate,
+  sweepReportCard,
+  sweepSummary,
+  sweepToJson,
+} from "../workflows/sweep.js";
+import type { CommandIO } from "./io.js";
+import { writeJson } from "./io.js";
+
+export interface SweepOptions {
+  yes: boolean;
+  json: boolean;
+}
+
+function line(c: SweepCandidate, width: number, now: Date): string {
+  const age = c.branch.lastCommit ? relativeTime(c.branch.lastCommit.committedAt, now) : "";
+  const name = sanitizeForDisplay(c.branch.name).padEnd(width);
+  return `  ${name}  ${age.padStart(4)}  ${c.reasons.join(" · ")}`;
+}
+
+export async function runSweepCommand(
+  git: GitRepository,
+  config: ResolvedConfig,
+  opts: SweepOptions,
+  io: CommandIO,
+): Promise<number> {
+  const [state, branches] = await Promise.all([git.getState(), git.listBranches()]);
+  const sweepConfig = resolveSweepConfig(config.branches, state.defaultBranch, state.currentBranch);
+  if (!sweepConfig) {
+    io.err("Could not determine a base branch. Set [branches] default_base in .branchit.toml.\n");
+    return 1;
+  }
+  const now = new Date();
+  const candidates = await gatherSweepCandidates(git.client, branches, sweepConfig);
+  const { safe, review, protected: prot } = sweepSummary(candidates);
+
+  let deleted: DeleteOutcome[] = [];
+  // Only preselected candidates are deleted without a prompt: proven merged
+  // and not checked out anywhere (worktree branches need the TUI's explicit pick).
+  const autoDelete = safe.filter((c) => c.selected);
+  if (opts.yes && autoDelete.length > 0) {
+    const recorder = new Recorder(git, Journal.forGitDir(git.gitDir));
+    ({ outcomes: deleted } = await recorder.deleteBranches(
+      autoDelete.map((c) => ({
+        name: c.branch.name,
+        mode: "safe" as const,
+        restoreSha: c.branch.lastCommit?.sha ?? null,
+      })),
+    ));
+  }
+  const failed = deleted.filter((d) => !d.ok);
+
+  if (opts.json) {
+    writeJson(io, {
+      ...sweepToJson(sweepConfig.base, candidates, now),
+      ...(opts.yes
+        ? {
+            deleted: deleted.map((d) => ({
+              name: d.name,
+              ok: d.ok,
+              restoreSha: d.restoreSha,
+              error: d.error?.message ?? null,
+            })),
+          }
+        : {}),
+    });
+    return failed.length > 0 ? 1 : 0;
+  }
+
+  const width = Math.min(
+    40,
+    Math.max(8, ...candidates.map((c) => sanitizeForDisplay(c.branch.name).length)),
+  );
+  const out: string[] = [`Sweep against ${sweepConfig.base}`, ""];
+  out.push(`Safely merged (${safe.length})`);
+  out.push(...(safe.length ? safe.map((c) => line(c, width, now)) : ["  none"]));
+  out.push("", `Needs review (${review.length}) — never deleted automatically`);
+  out.push(...(review.length ? review.map((c) => line(c, width, now)) : ["  none"]));
+  if (prot.length) {
+    out.push("", `Protected: ${prot.map((c) => sanitizeForDisplay(c.branch.name)).join(", ")}`);
+  }
+  out.push("");
+
+  if (opts.yes) {
+    for (const d of deleted) {
+      if (d.ok) {
+        out.push(
+          `Deleted ${d.name}${d.restoreSha ? `   (restore: git branch ${d.name} ${d.restoreSha})` : ""}`,
+        );
+      } else {
+        out.push(`Could not delete ${d.name}: ${d.error?.message ?? "unknown error"}`);
+      }
+    }
+    if (deleted.length === 0) out.push("Nothing safely merged to delete.");
+    else if (deleted.some((d) => d.ok))
+      out.push("Changed your mind? `branchit undo --yes` restores them all.");
+    out.push("");
+  }
+
+  out.push(sweepReportCard(candidates, now));
+  if (!opts.yes && autoDelete.length > 0) {
+    out.push(
+      "",
+      `Run \`branchit sweep --yes\` to delete the ${autoDelete.length} safely merged branch${autoDelete.length === 1 ? "" : "es"}.`,
+    );
+  }
+  io.out(`${out.join("\n")}\n`);
+  return failed.length > 0 ? 1 : 0;
+}

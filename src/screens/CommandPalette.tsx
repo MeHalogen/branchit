@@ -1,7 +1,7 @@
 import { Box, Text, useInput } from "ink";
 import { useMemo, useState } from "react";
 import { useColor } from "../app/theme-context.js";
-import { COMMANDS, type Command, type CommandId } from "../keys/registry.js";
+import { COMMANDS, type Command, type CommandId, shortcutFor } from "../keys/registry.js";
 import { rankBranches } from "../search/rank.js";
 import { sanitizeForDisplay } from "../utils/format.js";
 
@@ -103,7 +103,7 @@ export function CommandPalette(props: {
                 <Box>
                   <Text color={color("dim")}>
                     {cmd.category}
-                    {cmd.shortcut ? `  ${cmd.shortcut}` : ""}
+                    {shortcutFor(cmd.id) ? `  ${shortcutFor(cmd.id)}` : ""}
                   </Text>
                 </Box>
               </Box>

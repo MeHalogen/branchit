@@ -10,6 +10,8 @@
 import type { GitClient } from "../git/client.js";
 import { query } from "../git/command.js";
 import type { Branch } from "../git/models.js";
+import { ageInDays, humanAge } from "../utils/format.js";
+import { mapPool } from "../utils/pool.js";
 
 export type BranchClassification =
   | "safe_merged"
@@ -33,6 +35,8 @@ export interface SweepCandidate {
   uniqueCommitCount: number;
   /** UI selection state; managed by the screen, defaulted by policy here. */
   selected: boolean;
+  /** Set when deleting the branch also removes its (linked) worktree. */
+  worktreePath?: string;
 }
 
 export interface SweepConfig {
@@ -80,6 +84,21 @@ export function classifyBranch(
     return candidate(branch, "protected", "certain", ["current branch"], "none", info, false);
   }
   if (branch.worktreePath) {
+    if (info.merged && !isProtectedName(branch.name, config.protectedPatterns)) {
+      // Merged work living in a linked worktree: offer to remove both, but
+      // never preselect it — the worktree directory goes too (refused by Git
+      // if it has uncommitted changes).
+      const c = candidate(
+        branch,
+        "safe_merged",
+        "certain",
+        [`tip reachable from ${config.base}`, `removes its worktree too: ${branch.worktreePath}`],
+        "safe",
+        info,
+        false,
+      );
+      return { ...c, worktreePath: branch.worktreePath };
+    }
     return candidate(
       branch,
       "protected",
@@ -163,33 +182,28 @@ export async function gatherSweepCandidates(
       : [],
   );
 
-  const out: SweepCandidate[] = [];
-  for (const branch of locals) {
+  // Bounded parallelism: thousands of branches must not mean thousands of
+  // sequential git spawns, nor thousands at once.
+  return mapPool(locals, 12, async (branch) => {
     const protectedByPolicy =
       branch.isCurrent ||
-      Boolean(branch.worktreePath) ||
+      (Boolean(branch.worktreePath) && !mergedSet.has(branch.name)) ||
       isProtectedName(branch.name, config.protectedPatterns);
 
     if (protectedByPolicy) {
-      out.push(
-        classifyBranch(
-          branch,
-          { merged: false, uniqueCommitCount: 0, patchEquivalent: false },
-          config,
-        ),
+      return classifyBranch(
+        branch,
+        { merged: false, uniqueCommitCount: 0, patchEquivalent: false },
+        config,
       );
-      continue;
     }
 
     if (mergedSet.has(branch.name)) {
-      out.push(
-        classifyBranch(
-          branch,
-          { merged: true, uniqueCommitCount: 0, patchEquivalent: false },
-          config,
-        ),
+      return classifyBranch(
+        branch,
+        { merged: true, uniqueCommitCount: 0, patchEquivalent: false },
+        config,
       );
-      continue;
     }
 
     // Bounded extra work for the non-merged minority.
@@ -204,9 +218,8 @@ export async function gatherSweepCandidates(
       const hasPlus = lines.some((l) => l.startsWith("+"));
       patchEquivalent = lines.length > 0 && !hasPlus;
     }
-    out.push(classifyBranch(branch, { merged: false, uniqueCommitCount, patchEquivalent }, config));
-  }
-  return out;
+    return classifyBranch(branch, { merged: false, uniqueCommitCount, patchEquivalent }, config);
+  });
 }
 
 /** Group order for display; protected shown last and de-emphasized. */
@@ -221,4 +234,114 @@ export function sweepSummary(candidates: SweepCandidate[]) {
   );
   const protectedList = candidates.filter((c) => c.classification === "protected");
   return { safe, review, protected: protectedList };
+}
+
+/** Leaf name of a base ref: "origin/main" -> "main". */
+export function baseLeaf(base: string): string {
+  const slash = base.lastIndexOf("/");
+  return slash === -1 ? base : base.slice(slash + 1);
+}
+
+/**
+ * Sweep configuration from resolved config + repository state. The base
+ * branch's own name is always protected. Null when no base can be found.
+ */
+export function resolveSweepConfig(
+  branches: { defaultBase: string | null; protected: string[] },
+  detectedDefault: string | null,
+  currentBranch: string | null,
+): SweepConfig | null {
+  const base = branches.defaultBase ?? detectedDefault;
+  if (!base) return null;
+  return { base, protectedPatterns: [...branches.protected, baseLeaf(base)], currentBranch };
+}
+
+function countBy(candidates: SweepCandidate[], c: BranchClassification): number {
+  return candidates.filter((x) => x.classification === c).length;
+}
+
+function oldestSweepable(candidates: SweepCandidate[], now: Date): string | null {
+  let oldest: string | null = null;
+  for (const c of candidates) {
+    if (c.classification === "protected") continue;
+    const at = c.branch.lastCommit?.committedAt;
+    if (!at) continue;
+    if (oldest === null || ageInDays(at, now) > ageInDays(oldest, now)) oldest = at;
+  }
+  return oldest;
+}
+
+/**
+ * One copy-pasteable line describing the repository's branch hygiene, e.g.
+ * "23 branches · 17 safely merged · 3 likely squash-merged · oldest 14 months".
+ */
+export function sweepReportCard(candidates: SweepCandidate[], now: Date = new Date()): string {
+  const total = candidates.length;
+  const parts = [`${total} branch${total === 1 ? "" : "es"}`];
+  const groups: [BranchClassification, string][] = [
+    ["safe_merged", "safely merged"],
+    ["squash_suspected", "likely squash-merged"],
+    ["remote_gone", "upstream gone"],
+    ["unmerged", "unmerged"],
+  ];
+  for (const [kind, label] of groups) {
+    const n = countBy(candidates, kind);
+    if (n > 0) parts.push(`${n} ${label}`);
+  }
+  const oldest = oldestSweepable(candidates, now);
+  if (parts.length === 1) parts.push("nothing to sweep");
+  else if (oldest) parts.push(`oldest ${humanAge(oldest, now)}`);
+  return parts.join(" · ");
+}
+
+export interface SweepJson {
+  base: string;
+  summary: {
+    total: number;
+    safeMerged: number;
+    squashSuspected: number;
+    remoteGone: number;
+    unmerged: number;
+    protected: number;
+    oldestDays: number | null;
+  };
+  branches: {
+    name: string;
+    classification: BranchClassification;
+    confidence: Confidence;
+    reasons: string[];
+    uniqueCommitCount: number;
+    lastCommitAt: string | null;
+    sha: string | null;
+  }[];
+}
+
+/** Stable JSON shape for `branchit sweep --json`. */
+export function sweepToJson(
+  base: string,
+  candidates: SweepCandidate[],
+  now: Date = new Date(),
+): SweepJson {
+  const oldest = oldestSweepable(candidates, now);
+  return {
+    base,
+    summary: {
+      total: candidates.length,
+      safeMerged: countBy(candidates, "safe_merged"),
+      squashSuspected: countBy(candidates, "squash_suspected"),
+      remoteGone: countBy(candidates, "remote_gone"),
+      unmerged: countBy(candidates, "unmerged"),
+      protected: countBy(candidates, "protected"),
+      oldestDays: oldest ? ageInDays(oldest, now) : null,
+    },
+    branches: candidates.map((c) => ({
+      name: c.branch.name,
+      classification: c.classification,
+      confidence: c.confidence,
+      reasons: c.reasons,
+      uniqueCommitCount: c.uniqueCommitCount,
+      lastCommitAt: c.branch.lastCommit?.committedAt ?? null,
+      sha: c.branch.lastCommit?.sha ?? null,
+    })),
+  };
 }

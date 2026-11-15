@@ -30,3 +30,65 @@ export async function recentBranchRanks(
   }
   return ranks;
 }
+
+export interface ReflogEntry {
+  sha: string;
+  /** When HEAD moved here (reflog time, not commit time). ISO-8601. */
+  at: string;
+  /** Reflog action, e.g. "commit: fix x", "reset: moving to HEAD~1". */
+  action: string;
+  /** Subject of the commit HEAD pointed at. */
+  subject: string;
+}
+
+const REFLOG_FORMAT = "%H%x1f%gd%x1f%gs%x1f%s";
+
+/** Parse `git log -g --date=iso-strict --format=REFLOG_FORMAT` output. */
+export function parseReflog(stdout: string): ReflogEntry[] {
+  const out: ReflogEntry[] = [];
+  for (const line of stdout.split("\n")) {
+    const [sha, selector, action, subject] = line.split("\x1f");
+    if (!sha || !selector) continue;
+    const m = selector.match(/@\{(.+)\}$/);
+    out.push({ sha, at: m?.[1] ?? "", action: action ?? "", subject: subject ?? "" });
+  }
+  return out;
+}
+
+/** The HEAD reflog, newest first: every place HEAD has been recently. */
+export async function readReflog(client: GitClient, limit = 100): Promise<ReflogEntry[]> {
+  const res = await client.run({
+    args: [
+      "log",
+      "-g",
+      "--date=iso-strict",
+      `--format=${REFLOG_FORMAT}`,
+      "-n",
+      String(limit),
+      "HEAD",
+    ],
+    display: "git log -g HEAD",
+  });
+  return res.ok ? parseReflog(res.stdout) : [];
+}
+
+/** Stat preview plus which local branches (if any) still contain `sha`. */
+export async function reflogPreview(
+  client: GitClient,
+  sha: string,
+): Promise<{ branches: string[]; stat: string[] }> {
+  const [contains, show] = await Promise.all([
+    client.run({
+      args: ["branch", "--contains", sha, "--format=%(refname:short)"],
+      display: `git branch --contains ${sha}`,
+    }),
+    client.run({
+      args: ["show", "--stat", "--format=%h %s%n%an · %ar", "--no-color", sha],
+      display: `git show --stat ${sha}`,
+    }),
+  ]);
+  return {
+    branches: contains.ok ? contains.stdout.split("\n").filter(Boolean) : [],
+    stat: show.ok ? show.stdout.split("\n").filter(Boolean).slice(0, 12) : [],
+  };
+}

@@ -125,6 +125,21 @@ export const query = {
   },
 };
 
+export const journalQuery = {
+  /** Full SHA of HEAD; fails on an unborn branch. */
+  headSha(): GitCommand {
+    return cmd(["rev-parse", "--verify", "--quiet", "HEAD"]);
+  },
+  /** "name\0sha" for every local branch. */
+  branchTips(): GitCommand {
+    return cmd(["for-each-ref", "--format=%(refname:short)%00%(objectname)", "refs/heads"]);
+  },
+  /** Stash commit SHAs, newest first (index 0 = stash@{0}). */
+  stashShas(): GitCommand {
+    return cmd(["stash", "list", "--format=%H"]);
+  },
+};
+
 // ── State-changing mutations ────────────────────────────────────────────────
 
 export const mutation = {
@@ -179,6 +194,18 @@ export const mutation = {
   /** Force delete: removes even unmerged branches. Confirmation is a caller concern. */
   forceDeleteBranch(name: string): GitCommand {
     return cmd(["branch", "-D", "--", name]);
+  },
+  /** Move the branch pointer back, keeping the undone commit's changes staged. */
+  resetSoft(sha: string): GitCommand {
+    return cmd(["reset", "--soft", sha]);
+  },
+  /** Return to a specific commit without a branch. */
+  switchDetach(sha: string): GitCommand {
+    return cmd(["switch", "--detach", sha]);
+  },
+  /** Pop a specific stash entry, restoring staged state too. */
+  stashPop(ref: string): GitCommand {
+    return cmd(["stash", "pop", "--index", ref]);
   },
   /** Recreate a branch at a specific commit (used by delete-undo). */
   recreateBranch(name: string, sha: string): GitCommand {

@@ -5,7 +5,7 @@ import type { RepoData } from "../app/loadRepo.js";
 import { orderedLocalBranches } from "../app/loadRepo.js";
 import { useColor, useTheme } from "../app/theme-context.js";
 import { BranchRow } from "../components/BranchRow.js";
-import { COMMANDS, type Command } from "../keys/registry.js";
+import { COMMANDS, type Command, shortcutFor } from "../keys/registry.js";
 import {
   abbreviateHome,
   repoNameFromRoot,
@@ -19,6 +19,10 @@ const IMPLEMENTED: ReadonlySet<string> = new Set([
   "dashboard.sweep",
   "dashboard.commit",
   "dashboard.prepare",
+  "dashboard.workingTree",
+  "dashboard.sync",
+  "dashboard.stash",
+  "dashboard.worktrees",
   "global.refresh",
   "global.help",
   "global.quit",
@@ -31,6 +35,10 @@ const QUICK_ACTION_IDS: Command["id"][] = [
   "dashboard.sweep",
   "dashboard.fetch",
   "dashboard.prepare",
+  "dashboard.workingTree",
+  "dashboard.sync",
+  "dashboard.stash",
+  "dashboard.worktrees",
 ];
 
 export function Dashboard(props: { data: RepoData; width: number }) {
@@ -137,7 +145,7 @@ export function Dashboard(props: { data: RepoData; width: number }) {
             return (
               <Box key={cmd.id} width={Math.floor(innerWidth / 2)}>
                 <Text color={color("primary")} bold>
-                  [{cmd.shortcut}]
+                  [{shortcutFor(cmd.id)}]
                 </Text>
                 <Text color={planned ? color("dim") : color("text")}>
                   {" "}
