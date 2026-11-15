@@ -3,6 +3,29 @@
 All notable changes to Branchit are documented here. This project follows
 [Semantic Versioning](https://semver.org/) and [Conventional Commits](https://www.conventionalcommits.org/).
 
+## 0.4.0 — The stubs are real now
+
+### Added
+- **Working tree (`w`)** with a diff viewer: file list (staged, modified,
+  untracked, conflicted) and a coloured, scrollable diff of the selected file.
+  `space` stages or unstages a file; in the diff, `n`/`N` move between hunks
+  and `s`/`u` stage or unstage just that hunk (via `git apply --cached`).
+  `x` discards a file's changes behind a red confirm; the changes are stashed
+  first, so `u` brings them back.
+- **Search (`/`)**: one fuzzy box over branches, commands, the last 300
+  commits and every tracked file. Branches switch, commands run, changed files
+  open in the working tree, commits can become a branch.
+- **Sync (`y`)**: pull with an explicit fast-forward / merge / rebase choice
+  and a command preview. Requires a clean tree; on conflicts it stops, lists
+  the files and offers a one-key abort back to where you were. Pulls are
+  journaled, so `u` undoes them with `git reset --keep`.
+- **Stash manager (`z`)**: list with previews, apply, pop, turn a stash into
+  a branch, and drop (undoable).
+
+### Changed
+- All of Branchit's git calls run with `GIT_OPTIONAL_LOCKS=0`, so background
+  status reads never take `index.lock` and collide with your own git commands.
+
 ## 0.3.0 — Git with an undo button
 
 ### Added

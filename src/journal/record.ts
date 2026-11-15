@@ -19,7 +19,10 @@ import {
 } from "../git/actions.js";
 import { journalQuery, mutation } from "../git/command.js";
 import type { GitRepository } from "../git/repository.js";
+import type { StashEntry } from "../git/stash.js";
+import { stashCommands } from "../git/stash.js";
 import { pushCurrent } from "../git/sync.js";
+import { type PullMode, workspaceCommands } from "../git/workspace.js";
 import type { Journal, JournalEntry, JournalOp } from "./journal.js";
 
 export class Recorder {
@@ -152,6 +155,52 @@ export class Recorder {
   }): Promise<ActionResult> {
     const res = await pushCurrent(this.git.client, opts);
     if (res.ok) this.record({ op: "push", branch: opts.branch, remote: opts.remote });
+    return res;
+  }
+
+  private async runAction(command: { args: string[]; display: string }): Promise<ActionResult> {
+    const res = await this.git.client.run(command);
+    if (res.ok) return { ok: true, commandDisplay: res.commandDisplay, durationMs: res.durationMs };
+    return { ok: false, error: res.error!, commandDisplay: res.commandDisplay };
+  }
+
+  /**
+   * Discard working-tree changes to `paths` by stashing them (including
+   * untracked files), so the discard is undoable rather than destructive.
+   */
+  async discard(paths: string[]): Promise<ActionResult> {
+    const message = `branchit: discard ${paths.length === 1 ? paths[0] : `${paths.length} files`}`;
+    const res = await this.runAction(workspaceCommands.stashPaths(message, paths));
+    if (res.ok) {
+      const stashSha = await this.tip("refs/stash");
+      if (stashSha) this.record({ op: "discard", paths, stashSha });
+    }
+    return res;
+  }
+
+  async pull(mode: PullMode): Promise<ActionResult> {
+    const before = await this.head();
+    const res = await this.runAction(workspaceCommands.pull(mode));
+    if (res.ok && before.sha) {
+      const after = await this.tip("HEAD");
+      if (after && after !== before.sha) {
+        this.record({ op: "pull", branch: before.branch, mode, before: before.sha, after });
+      }
+    }
+    return res;
+  }
+
+  async stashDrop(entry: StashEntry): Promise<ActionResult> {
+    const res = await this.runAction(stashCommands.drop(entry.ref));
+    if (res.ok) this.record({ op: "stash-drop", sha: entry.sha, message: entry.message });
+    return res;
+  }
+
+  /** `git stash branch`: new branch at the stash's base, stash applied, then dropped. */
+  async stashBranch(name: string, entry: StashEntry): Promise<ActionResult> {
+    const before = await this.head();
+    const res = await this.runAction(stashCommands.branch(name, entry.ref));
+    if (res.ok) await this.recordCreate(name, before.branch, true);
     return res;
   }
 }

@@ -19,7 +19,7 @@ export class TempRepo {
       cwd: this.dir,
       shell: false,
       reject: false,
-      env: { GIT_TERMINAL_PROMPT: "0", LC_ALL: "C" },
+      env: { GIT_TERMINAL_PROMPT: "0", LC_ALL: "C", GIT_OPTIONAL_LOCKS: "0" },
       extendEnv: true,
     });
     if (res.exitCode !== 0) {

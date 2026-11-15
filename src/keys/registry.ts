@@ -14,6 +14,8 @@ export type CommandId =
   | "dashboard.fetch"
   | "dashboard.prepare"
   | "dashboard.workingTree"
+  | "dashboard.sync"
+  | "dashboard.stash"
   | "global.undo"
   | "global.recover"
   | "global.help"
@@ -80,6 +82,27 @@ export const COMMANDS: Command[] = [
     shortcut: "w",
     category: "View",
     keywords: ["status", "working", "tree", "files", "diff"],
+  },
+  {
+    id: "dashboard.sync",
+    title: "Pull (merge / rebase / fast-forward)",
+    shortcut: "y",
+    category: "Sync",
+    keywords: ["pull", "sync", "update", "rebase", "merge", "fast-forward"],
+  },
+  {
+    id: "dashboard.stash",
+    title: "Stashes",
+    shortcut: "z",
+    category: "Commit",
+    keywords: ["stash", "shelve", "wip", "pop", "apply"],
+  },
+  {
+    id: "global.search",
+    title: "Search everything",
+    shortcut: "/",
+    category: "View",
+    keywords: ["search", "find", "files", "commits", "branches", "go to"],
   },
   {
     id: "global.undo",

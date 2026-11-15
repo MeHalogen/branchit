@@ -36,6 +36,16 @@ export type JournalOp =
       message: string;
     }
   | { op: "push"; branch: string; remote: string }
+  /** Working-tree changes discarded into a stash (so they can come back). */
+  | { op: "discard"; paths: string[]; stashSha: string }
+  | {
+      op: "pull";
+      branch: string | null;
+      mode: "ff-only" | "merge" | "rebase";
+      before: string;
+      after: string;
+    }
+  | { op: "stash-drop"; sha: string; message: string }
   | { op: "undo"; of: string };
 
 export type JournalEntry = JournalOp & { id: string; at: string };
