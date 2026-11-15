@@ -3,6 +3,26 @@
 All notable changes to Branchit are documented here. This project follows
 [Semantic Versioning](https://semver.org/) and [Conventional Commits](https://www.conventionalcommits.org/).
 
+## 0.5.0 — Worktrees for the parallel-agent era
+
+### Added
+- **Worktree manager (`t`)**: every checkout of the repository with its
+  branch, uncommitted changes, ahead/behind and last activity. Add a worktree
+  for an existing branch (`a`) or a new one (`n`), remove it (`d`, refused
+  while it has changes unless you force it behind a red confirm), and prune
+  stale entries (`p`). Adds and clean removals are undoable.
+- New worktrees go to `../{repo}-wt/{branch}` by default; change it with
+  `[worktrees] root` in `.branchit.toml`.
+- **Open here**: `enter` on a worktree leaves Branchit with your shell in that
+  directory. Install the wrapper once with
+  `eval "$(branchit shell-init zsh)"` (or `bash` / `fish`). The branch
+  switcher uses the same path when a branch is checked out in another
+  worktree, instead of just erroring.
+- The sweeper is worktree-aware: a merged branch checked out in a linked
+  worktree is offered (never preselected) for remove-both, and undo restores
+  both. `branchit sweep --yes` still only deletes branches checked out nowhere.
+- `branchit worktrees [--json]` (alias `wt`) and `branchit shell-init`.
+
 ## 0.4.0 — The stubs are real now
 
 ### Added

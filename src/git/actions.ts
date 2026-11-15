@@ -102,12 +102,15 @@ export interface DeleteSpec {
   mode: "safe" | "force";
   /** Tip commit before deletion, recorded so the deletion can be undone. */
   restoreSha: string | null;
+  /** Linked worktree to remove first (non-forced: Git refuses if dirty). */
+  worktreePath?: string;
 }
 
 export interface DeleteOutcome {
   name: string;
   ok: boolean;
   restoreSha: string | null;
+  worktreePath?: string;
   error?: GitError;
 }
 
@@ -123,6 +126,16 @@ export async function bulkDeleteBranches(
 ): Promise<DeleteOutcome[]> {
   const outcomes: DeleteOutcome[] = [];
   for (const spec of specs) {
+    if (spec.worktreePath) {
+      const rm = await client.run({
+        args: ["worktree", "remove", spec.worktreePath],
+        display: `git worktree remove ${spec.worktreePath}`,
+      });
+      if (!rm.ok) {
+        outcomes.push({ name: spec.name, ok: false, restoreSha: spec.restoreSha, error: rm.error });
+        continue;
+      }
+    }
     const command =
       spec.mode === "safe"
         ? mutation.safeDeleteBranch(spec.name)
@@ -132,6 +145,7 @@ export async function bulkDeleteBranches(
       name: spec.name,
       ok: res.ok,
       restoreSha: spec.restoreSha,
+      ...(spec.worktreePath ? { worktreePath: spec.worktreePath } : {}),
       error: res.error,
     });
   }

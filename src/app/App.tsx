@@ -39,6 +39,7 @@ import { Sweeper } from "../screens/Sweeper.js";
 import { UndoScreen } from "../screens/UndoScreen.js";
 import { Welcome } from "../screens/Welcome.js";
 import { type FileRow, WorkingTree } from "../screens/WorkingTree.js";
+import { Worktrees } from "../screens/Worktrees.js";
 import { relativeTime, sanitizeForDisplay } from "../utils/format.js";
 import { openUrl } from "../utils/open-url.js";
 import { commandsFromStrings, detectChecks, runChecks } from "../workflows/checks.js";
@@ -48,6 +49,12 @@ import {
   resolveSweepConfig,
   type SweepCandidate,
 } from "../workflows/sweep.js";
+import {
+  gatherWorktrees,
+  type WorktreeInfo,
+  worktreeCommands,
+  worktreePathFor,
+} from "../workflows/worktrees.js";
 import { toastForError } from "./error-text.js";
 import { loadRepoData, type RepoData } from "./loadRepo.js";
 import { useColor } from "./theme-context.js";
@@ -66,6 +73,9 @@ type View =
   | "workingTree"
   | "search"
   | "stash"
+  | "worktrees"
+  | "worktreeBranch"
+  | "worktreeNew"
   | "welcome";
 
 interface ModalState {
@@ -90,6 +100,7 @@ const IMPLEMENTED_COMMANDS: ReadonlySet<CommandId> = new Set([
   "dashboard.workingTree",
   "dashboard.sync",
   "dashboard.stash",
+  "dashboard.worktrees",
   "global.refresh",
   "global.help",
   "global.quit",
@@ -103,6 +114,11 @@ export function App(props: {
   config?: ResolvedConfig;
   /** Show the one-time welcome screen before the dashboard. */
   firstRun?: boolean;
+  /**
+   * Ask the launching shell to cd somewhere after exit (via `branchit
+   * shell-init`). Returns false when no shell integration is active.
+   */
+  cdTo?: (path: string) => boolean;
 }) {
   const { git } = props;
   const config = props.config ?? defaultConfig();
@@ -128,6 +144,7 @@ export function App(props: {
   const [wtRevision, setWtRevision] = useState(0);
   const [searchItems, setSearchItems] = useState<SearchItem[] | null>(null);
   const [stashes, setStashes] = useState<StashEntry[] | null>(null);
+  const [worktrees, setWorktrees] = useState<WorktreeInfo[] | null>(null);
 
   // Every mutation goes through the recorder so it can be undone later.
   const journal = useMemo(() => Journal.forGitDir(git.gitDir), [git.gitDir]);
@@ -243,6 +260,29 @@ export function App(props: {
     [notify, rec, reload],
   );
 
+  /** Leave the TUI in `path` if the shell wrapper is installed; otherwise say how. */
+  const openHere = useCallback(
+    (path: string) => {
+      if (props.cdTo?.(path)) {
+        exit();
+        return;
+      }
+      setModal({
+        title: "Open in your shell",
+        lines: [
+          "A program cannot change its parent shell's directory. Run:",
+          `  cd ${path}`,
+          "",
+          "To make Enter do this for you, add to your shell rc:",
+          '  eval "$(branchit shell-init zsh)"   # or bash / fish',
+        ],
+        actions: [{ key: "enter", label: "OK" }],
+        onAction: () => setModal(null),
+      });
+    },
+    [exit, props.cdTo],
+  );
+
   const onSelectBranch = useCallback(
     (branch: Branch) => {
       if (branch.isCurrent) {
@@ -251,9 +291,15 @@ export function App(props: {
         return;
       }
       if (branch.worktreePath) {
-        notify({
-          kind: "error",
-          message: `${branch.name} is checked out in ${branch.worktreePath}`,
+        const path = branch.worktreePath;
+        setModal({
+          title: `${branch.name} is checked out in another worktree`,
+          lines: [path, "Git allows a branch in only one worktree at a time."],
+          actions: [{ key: "enter", label: "Open that worktree", tone: "primary" }],
+          onAction: (key) => {
+            setModal(null);
+            if (key === "enter") openHere(path);
+          },
         });
         return;
       }
@@ -295,7 +341,7 @@ export function App(props: {
       }
       void doLocalSwitch(branch.name);
     },
-    [data.branches, doLocalSwitch, notify, rec, reload],
+    [data.branches, doLocalSwitch, notify, openHere, rec, reload],
   );
 
   // ── Fetch ─────────────────────────────────────────────────────────────────
@@ -483,9 +529,10 @@ export function App(props: {
   const onSweepDelete = useCallback(
     (specs: DeleteSpec[]) => {
       const forceCount = specs.filter((s) => s.mode === "force").length;
-      const preview = specs.map(
-        (s) => `git branch -${s.mode === "safe" ? "d" : "D"} ${s.name}`,
-      );
+      const preview = specs.flatMap((s) => [
+        ...(s.worktreePath ? [`git worktree remove ${s.worktreePath}`] : []),
+        `git branch -${s.mode === "safe" ? "d" : "D"} ${s.name}`,
+      ]);
       setModal({
         title: `Delete ${specs.length} branch(es)?`,
         lines: [
@@ -969,6 +1016,128 @@ export function App(props: {
     [data.branches, data.status.workingTree, git, notify, onSelectBranch, rec, reload],
   );
 
+  // ── Worktrees (t) ────────────────────────────────────────────────────────
+  const refreshWorktrees = useCallback(async () => {
+    const list = await gatherWorktrees(git);
+    setWorktrees(list);
+    return list;
+  }, [git]);
+
+  const openWorktrees = useCallback(async () => {
+    setBusy("Reading worktrees…");
+    await refreshWorktrees();
+    setBusy(null);
+    setView("worktrees");
+  }, [refreshWorktrees]);
+
+  const addWorktree = useCallback(
+    (branch: string, newBranchFrom?: string) => {
+      const path = worktreePathFor(config.worktrees.root, git.root, branch);
+      const command = newBranchFrom
+        ? worktreeCommands.addNew(path, branch, newBranchFrom)
+        : worktreeCommands.addExisting(path, branch);
+      setModal({
+        title: `Add worktree for ${branch}?`,
+        lines: [`Location: ${path}`, "Change the location with [worktrees] root in .branchit.toml."],
+        commandPreview: [command.display],
+        actions: [
+          { key: "enter", label: "Add", tone: "primary" },
+          { key: "o", label: "Add and open here" },
+        ],
+        onAction: async (key) => {
+          setModal(null);
+          setBusy("Adding worktree…");
+          const res = await rec.addWorktree(path, branch, newBranchFrom ? { newBranchFrom } : {});
+          setBusy(null);
+          await reload();
+          if (!res.ok) {
+            const t = toastForError(res.error);
+            notify({ kind: "error", message: t.message, detail: t.detail });
+            setView("worktrees");
+            return;
+          }
+          await refreshWorktrees();
+          setView("worktrees");
+          notify({ kind: "success", message: `Added worktree for ${branch} (u to undo)` });
+          if (key === "o") openHere(path);
+        },
+      });
+    },
+    [config.worktrees.root, git.root, notify, openHere, rec, refreshWorktrees, reload],
+  );
+
+  const onWorktreeBranchPicked = useCallback(
+    (branch: Branch) => {
+      if (branch.isCurrent || branch.worktreePath) {
+        notify({ kind: "warning", message: `${branch.name} is already checked out` });
+        return;
+      }
+      if (branch.kind === "remote") {
+        const slash = branch.name.indexOf("/");
+        const local = slash === -1 ? branch.name : branch.name.slice(slash + 1);
+        const exists = data.branches.some((b) => b.kind === "local" && b.name === local);
+        if (exists) addWorktree(local);
+        else addWorktree(local, branch.name);
+        return;
+      }
+      addWorktree(branch.name);
+    },
+    [addWorktree, data.branches, notify],
+  );
+
+  const onRemoveWorktree = useCallback(
+    (wt: WorktreeInfo) => {
+      const dirty = (wt.dirtyCount ?? 0) > 0;
+      setModal({
+        title: `Remove worktree ${wt.branch ?? wt.path}?`,
+        lines: dirty
+          ? [
+              `It has ${wt.dirtyCount} uncommitted change(s).`,
+              "Git refuses a normal removal. Force removal deletes those changes permanently.",
+            ]
+          : [`The directory ${wt.path} is removed; the branch stays.`, "u on the dashboard can undo this."],
+        commandPreview: [worktreeCommands.remove(wt.path, dirty).display],
+        danger: dirty,
+        actions: dirty
+          ? [{ key: "F", label: "Force remove (permanent)", tone: "danger" }]
+          : [{ key: "enter", label: "Remove", tone: "primary" }],
+        onAction: async (key) => {
+          setModal(null);
+          if (key !== "enter" && key !== "F") return;
+          const res = await rec.removeWorktree(wt, dirty);
+          await refreshWorktrees();
+          await reload();
+          if (res.ok) notify({ kind: "success", message: `Removed ${wt.path}` });
+          else {
+            const t = toastForError(res.error);
+            notify({ kind: "error", message: t.message, detail: t.detail });
+          }
+        },
+      });
+    },
+    [notify, rec, refreshWorktrees, reload],
+  );
+
+  const onPruneWorktrees = useCallback(() => {
+    setModal({
+      title: "Prune stale worktrees?",
+      lines: ["Removes Git's records of worktrees whose directories no longer exist."],
+      commandPreview: [worktreeCommands.prune().display],
+      actions: [{ key: "enter", label: "Prune", tone: "primary" }],
+      onAction: async (key) => {
+        setModal(null);
+        if (key !== "enter") return;
+        const res = await git.client.run(worktreeCommands.prune());
+        await refreshWorktrees();
+        notify(
+          res.ok
+            ? { kind: "success", message: "Pruned stale worktrees" }
+            : { kind: "error", message: res.error?.message ?? "Prune failed" },
+        );
+      },
+    });
+  }, [git, notify, refreshWorktrees]);
+
   const runCommand = useCallback(
     (id: CommandId) => {
       switch (id) {
@@ -999,6 +1168,9 @@ export function App(props: {
           break;
         case "dashboard.stash":
           void openStash();
+          break;
+        case "dashboard.worktrees":
+          void openWorktrees();
           break;
         case "global.search":
           void openSearch();
@@ -1039,6 +1211,7 @@ export function App(props: {
       openSync,
       openStash,
       openSearch,
+      openWorktrees,
       reload,
     ],
   );
@@ -1273,6 +1446,44 @@ export function App(props: {
             setView("dashboard");
           }}
           active={modal === null && !busy}
+        />
+      ) : null}
+
+      {view === "worktrees" && worktrees ? (
+        <Worktrees
+          worktrees={worktrees}
+          width={width}
+          onOpen={(wt) => openHere(wt.path)}
+          onAddExisting={() => setView("worktreeBranch")}
+          onAddNew={() => setView("worktreeNew")}
+          onRemove={onRemoveWorktree}
+          onPrune={onPruneWorktrees}
+          onClose={() => {
+            setWorktrees(null);
+            setView("dashboard");
+          }}
+          active={modal === null && !busy}
+        />
+      ) : null}
+
+      {view === "worktreeBranch" ? (
+        <BranchSwitcher
+          data={data}
+          width={width}
+          onSelect={onWorktreeBranchPicked}
+          onClose={() => setView("worktrees")}
+          commandPreview={false}
+        />
+      ) : null}
+
+      {view === "worktreeNew" ? (
+        <NewBranch
+          data={data}
+          width={width}
+          base={data.state.currentBranch ?? data.state.defaultBranch ?? "HEAD"}
+          onCreate={(name, base) => addWorktree(name, base)}
+          onClose={() => setView("worktrees")}
+          commandPreview={false}
         />
       ) : null}
 

@@ -22,6 +22,7 @@ const IMPLEMENTED: ReadonlySet<string> = new Set([
   "dashboard.workingTree",
   "dashboard.sync",
   "dashboard.stash",
+  "dashboard.worktrees",
   "global.refresh",
   "global.help",
   "global.quit",
@@ -37,6 +38,7 @@ const QUICK_ACTION_IDS: Command["id"][] = [
   "dashboard.workingTree",
   "dashboard.sync",
   "dashboard.stash",
+  "dashboard.worktrees",
 ];
 
 export function Dashboard(props: { data: RepoData; width: number }) {

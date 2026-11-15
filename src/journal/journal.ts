@@ -19,7 +19,13 @@ export type JournalOp =
       from: string | null;
       switched: boolean;
     }
-  | { op: "delete-branches"; branches: { name: string; sha: string }[] }
+  | {
+      op: "delete-branches";
+      /** `worktreePath` set when the branch's linked worktree was removed too. */
+      branches: { name: string; sha: string; worktreePath?: string }[];
+    }
+  | { op: "worktree-add"; path: string; branch: string; createdBranch: boolean; sha: string }
+  | { op: "worktree-remove"; path: string; branch: string | null; head: string }
   | {
       op: "commit";
       branch: string | null;

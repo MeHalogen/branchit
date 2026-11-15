@@ -16,6 +16,7 @@ export type CommandId =
   | "dashboard.workingTree"
   | "dashboard.sync"
   | "dashboard.stash"
+  | "dashboard.worktrees"
   | "global.undo"
   | "global.recover"
   | "global.help"
@@ -96,6 +97,13 @@ export const COMMANDS: Command[] = [
     shortcut: "z",
     category: "Commit",
     keywords: ["stash", "shelve", "wip", "pop", "apply"],
+  },
+  {
+    id: "dashboard.worktrees",
+    title: "Worktrees",
+    shortcut: "t",
+    category: "Branches",
+    keywords: ["worktree", "parallel", "agents", "checkout", "workspace"],
   },
   {
     id: "global.search",

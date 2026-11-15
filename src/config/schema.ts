@@ -47,6 +47,13 @@ export const ConfigFileSchema = z
       })
       .strict()
       .optional(),
+    worktrees: z
+      .object({
+        /** Where new worktrees go; {repo} and {branch} are substituted. */
+        root: z.string().min(1).optional(),
+      })
+      .strict()
+      .optional(),
   })
   .strict();
 
@@ -75,6 +82,10 @@ export interface ResolvedConfig {
     /** Explicit command strings, or null to auto-detect from package.json. */
     commands: string[] | null;
   };
+  worktrees: {
+    /** Path template, relative to the repository root unless absolute. */
+    root: string;
+  };
 }
 
 export function defaultConfig(): ResolvedConfig {
@@ -88,6 +99,7 @@ export function defaultConfig(): ResolvedConfig {
       requireScope: false,
     },
     checks: { commands: null },
+    worktrees: { root: "../{repo}-wt/{branch}" },
   };
 }
 
@@ -109,6 +121,7 @@ export function mergeConfig(base: ResolvedConfig, file: ConfigFile): ResolvedCon
     branches: { ...base.branches, protected: [...base.branches.protected] },
     commit: { ...base.commit, types: [...base.commit.types], scopes: [...base.commit.scopes] },
     checks: { ...base.checks },
+    worktrees: { ...base.worktrees },
   };
   if (file.ui) {
     if (file.ui.command_preview !== undefined) next.ui.commandPreview = file.ui.command_preview;
@@ -132,5 +145,6 @@ export function mergeConfig(base: ResolvedConfig, file: ConfigFile): ResolvedCon
   if (file.checks) {
     if (file.checks.commands !== undefined) next.checks.commands = file.checks.commands;
   }
+  if (file.worktrees?.root !== undefined) next.worktrees.root = file.worktrees.root;
   return next;
 }
