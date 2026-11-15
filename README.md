@@ -5,195 +5,171 @@
 [![license](https://img.shields.io/npm/l/branchit?color=cba6f7&style=flat-square)](LICENSE)
 [![node version](https://img.shields.io/node/v/branchit?color=a6e3a1&style=flat-square)](package.json)
 
-**Git flow without the command flow.**
+**Git with an undo button.** A fast, safe, keyboard-first terminal UI for the
+Git you do every day: switch, commit, clean up branches, juggle worktrees —
+and take any of it back.
 
-A fast, safe, keyboard-first terminal UI for the Git you do every day — switch branches, clean stale branches, compose structured commits, and prepare pull requests with zero command archaeology.
+![Branchit undoing a discard and a branch sweep](docs/gifs/undo.gif)
 
-![Branchit Demo](docs/demo.gif)
+## Try it in one line
 
----
-
-### 🚀 30-Second Demo Tour
-
-Here is what you are seeing in the animated walkthrough above:
-
-- **🌿 Fuzzy Switcher (`b`)**: Press `b`, type a few characters to filter local/remote branches, press `Tab` to inspect rich details (commits, author, dates, tracking), and press `Enter` to switch instantly.
-- **📋 PR Readiness (`p`)**: Press `p` to inspect branch health against the base branch. Spot unpushed commits, and press `p` to push/set upstream. Watch the checklist turn green and render a clickable GitHub compare link.
-- **🧹 Safe Sweeper with Undo (`s`)**: Press `s` to scan for stale local branches. Branches already merged are pre-selected for safe deletion. Press `d` to delete, and if you make a mistake, hit `u` to **Undo** and restore them instantly!
-- **✍️ Guided Conventional Commits & Auto-Checks (`c`)**: Press `c` to trigger a stage-by-stage commit wizard: stage files (`Space`/`a`), select commit types (`feat`, `fix`), auto-complete scopes, and enter subjects. It automatically prompts and runs pre-commit checks (`lint`, `test`) with live status and commits on success.
-
-```
-╭──────────────────────────────────────────────────────────────────────────╮
-│ branchit  payments-api                                          main ↑2    │
-╰──────────────────────────────────────────────────────────────────────────╯
-
- Repository  main → origin/main   changes
-
- 0 staged   1 modified   1 untracked
-
- Quick actions
- [b] Switch branch                     [c] Conventional commit
- [n] New branch                        [s] Sweep merged branches
- [f] Fetch remote                      [p] Prepare PR
-
- Recent branches
- ● main                                                         ↑2  1s
-   fix/old-header                                       remote gone  1s
-   feat/payment-retry                                            ↑1  1s
-   experiment/cache                                     no upstream  1s
-
- • Suggested: Stage changes and commit  (press c)
-
- b switch  n new  f fetch  c commit  s sweep  : commands  ? help  q quit
+```bash
+npx branchit demo
 ```
 
-> This is a **real rendered frame**, not a mockup.
+Opens Branchit in a throwaway sandbox repository with merged, squash-merged,
+stale and remote-gone branches. Nothing touches your own repositories.
 
----
+```bash
+npx branchit sweep
+```
 
-## ⚡ Quick Start
+In any repository: see your dead branches, ending with a one-line report you
+can paste anywhere:
 
-### Installation
+```
+14 branches · 9 safely merged · 2 likely squash-merged · 1 upstream gone · oldest 13 months
+```
 
-Install globally via `npm`:
+`branchit sweep --yes` deletes only the branches proven merged.
+
+```bash
+branchit undo
+```
+
+Changed your mind? Shows the last operation and the exact inverse commands;
+`--yes` runs them.
+
+## What it does
+
+| Key | Feature | Undoable |
+| --- | --- | --- |
+| `b` | Fuzzy branch switcher with a preview of where you are jumping | ✓ |
+| `n` | New branch from a prefix and a description | ✓ |
+| `c` | Conventional commit wizard: stage files, type, scope, subject, trusted pre-commit checks, optional AI message (`ctrl+g`) | ✓ (soft reset, changes stay staged) |
+| `w` | Working tree and diff viewer: stage files or single hunks, discard | ✓ discard |
+| `s` | Sweeper: merged / squash-merged / gone branches, by ancestry, never by age | ✓ |
+| `y` | Pull with an explicit fast-forward / merge / rebase choice; stops on conflicts with a one-key abort | ✓ |
+| `z` | Stash manager: preview, apply, pop, drop, stash → branch | ✓ drop |
+| `t` | Worktree manager: dirty state, ahead/behind, add, remove, prune, open in your shell | ✓ |
+| `p` | PR readiness: checklist, push with upstream, compare link | pushes are never undone |
+| `u` | Undo the last operation, after showing exactly what will run | — |
+| `/` | Search branches, commands, commits and files in one box | — |
+| `:` | Command palette, including *Recover lost work* (reflog time machine) | — |
+
+![Worktrees: add, add new, open in your shell](docs/gifs/worktrees.gif)
+
+### Worktrees for parallel work
+
+Run several branches — or several coding agents — side by side without
+re-cloning. `t` lists every worktree with its state; new ones land in
+`../{repo}-wt/{branch}` (configurable). Add the shell integration once and
+`enter` on a worktree leaves Branchit with your shell already in it:
+
+```bash
+eval "$(branchit shell-init zsh)"   # or bash; fish: branchit shell-init fish | source
+```
+
+![Sweep, delete, undo from the command line](docs/gifs/sweep.gif)
+
+## Install
 
 ```bash
 npm install -g branchit
 ```
 
-> [!NOTE]
-> Requires **Node ≥ 18** and **Git ≥ 2.23** (for `git switch` support).
+Requires **Node ≥ 18** and **Git ≥ 2.23**. Then run `branchit` in any
+repository. Shell completions: `branchit completions zsh|bash|fish`.
 
-### Usage
+## Commands
 
-Run the dashboard in any Git repository:
+Everything the TUI does to inspect state is also scriptable, with `--json`:
 
-```bash
-cd your-project-directory
-branchit
-```
+| Command | Description |
+| --- | --- |
+| `branchit` | Open the interactive TUI |
+| `branchit demo` | Open the TUI in a sandbox repository |
+| `branchit sweep [--yes] [--json]` | List stale branches; `--yes` deletes the safely merged ones |
+| `branchit undo [--yes] [--list] [--json]` | Preview or apply the inverse of the last operation |
+| `branchit worktrees [--json]` | Worktrees with dirty state and ahead/behind (alias `wt`) |
+| `branchit branches [--all] [--json]` | Branches with upstream state |
+| `branchit pr [--json]` | Pull-request readiness for the current branch |
+| `branchit status [--plain\|--json]` | Repository status for scripts |
+| `branchit switch <name>` | Switch non-interactively |
+| `branchit config` · `doctor` | Resolved configuration · environment diagnostics |
+| `branchit completions <shell>` · `shell-init <shell>` | Completions · cd-on-exit wrapper |
 
-- Press **`b`** to switch branches.
-- Press **`n`** to create a branch from prefix + description.
-- Press **`f`** to fetch remote refs, and **`r`** to force-refresh.
-- Press **`:`** to open the fuzzy command palette, and **`?`** for inline help.
+## How it compares
 
----
+[lazygit](https://github.com/jesseduffield/lazygit) and
+[gitui](https://github.com/extrawurst/gitui) are excellent, mature tools, and
+you may well be happier with one of them:
 
-## 💡 Understanding Git Better with Branchit
+- **lazygit** covers far more Git: interactive rebase, cherry-pick, bisect,
+  custom commands and a much larger community. Its undo works through the
+  reflog; Branchit keeps its own journal so it can also reverse branch
+  deletions, stash drops, discards and worktree changes, and shows the
+  commands before running them.
+- **gitui** is very fast and lightweight, written in Rust.
+- **Branchit** is deliberately narrower: everyday flows, every mutation
+  previewed and undoable, branch cleanup grounded in ancestry, first-class
+  worktrees, and a scriptable `--json` CLI next to the TUI.
 
-Git is incredibly powerful, but its command-line feedback can be silent or confusing. Here is a simple guide to Git's core concepts, and how **Branchit** makes them visual and safe:
+## Safety
 
-### 1. What is a Branch?
+- Every Git call uses argument arrays with `shell: false`; refs sit behind
+  `--`. Configured commands (checks, `[ai]`) are split into arguments without
+  ever touching a shell.
+- Nothing is stashed, deleted or force-removed silently. Destructive actions
+  show the exact command and need a confirm; force actions are red.
+- Repository-defined commands (pre-commit checks, the AI command) never run
+  until you trust that exact command set; changing it asks again.
+- Branch deletion is decided by Git ancestry and patch equivalence, never by
+  name or age. Pushes are never "undone" by rewriting shared history.
 
-In Git, a **branch is just a lightweight pointer** to a specific commit. When you switch branches, Git silently swaps the files in your directory to match that commit.
+More in [docs/git-safety.md](docs/git-safety.md).
 
-- **The Git Way**: Running `git switch feature` updates files instantly, but you can't see what's on that branch until you're already there.
-- **The Branchit Way**: Press `b` to open the switcher. As you navigate, Branchit shows a **pre-flight dashboard** for each branch: who wrote the last commit, when it was created, how many commits it is ahead or behind, and whether it has a remote counterpart. You see where you are jumping _before_ you jump.
+## Configuration
 
-### 2. Staging vs. Committing
-
-Think of staging as **packing a box**, and committing as **sealing and labeling it**:
-
-- **Staging (`git add`)**: You pick which changes are ready to go.
-- **Committing (`git commit`)**: You seal the box with a description of what is inside.
-- **The Branchit Way**: Press `c` to commit. Branchit displays a live list of changed files. You press `Space` to stage/unstage them individually, or `a` to stage all. You see exactly what is going into the "box" in real-time, then follow structured prompts to write a clean Conventional Commit message.
-
-### 3. Upstream and Pushing
-
-When you collaborate, you work with a **Remote** (usually `origin`), which is just a copy of the repository hosted on a server like GitHub:
-
-- **Upstream**: A setting that links your local branch (on your laptop) to a remote branch (on GitHub). If you don't set this, Git doesn't know where to send your code when you type `git push`.
-- **The Branchit Way**: Press `p` to check PR readiness. Branchit runs diagnostics and shows you if your branch is missing an upstream connection or has unpushed commits. If it's missing, you press `p` to push, and Branchit automatically sets up the upstream tracking for you.
-
-### 4. Merging and Branch Cleanups (Sweeping)
-
-When a branch is merged into `main`, it is safe to delete. But standard Git doesn't clean them up automatically:
-
-- **Safe Deletion (`git branch -d`)**: Only succeeds if Git detects that the branch's commits are already present in your base branch (e.g., `main`).
-- **Force Deletion (`git branch -D`)**: Deletes the branch pointer even if the work is lost.
-- **The Branchit Way**: Press `s` to sweep. Branchit runs an ancestry check, separating branches into "Safe to Delete" (fully merged) and "Needs Review" (unmerged). If you delete something by accident, Branchit offers a local **Undo** option that restores the pointer instantly, saving you from Git archaeology.
-
----
-
-## 🛠️ Commands & Options
-
-When you aren't in a TTY, `branchit` degrades gracefully to support scripts and diagnostics:
-
-| Command                   | Description                                                        |
-| ------------------------- | ------------------------------------------------------------------ |
-| `branchit`                | Open the interactive TUI dashboard                                 |
-| `branchit status`         | Print a concise human-readable repo status summary                 |
-| `branchit status --plain` | Output flat `key=value` variables for scripting                    |
-| `branchit switch <name>`  | Non-interactively switch to a branch (fails safely on conflicts)   |
-| `branchit config`         | View your resolved settings and where each setting came from       |
-| `branchit doctor`         | Run env diagnostics (git version, platform, paths) for bug reports |
-| `branchit --help`         | Display CLI options and usage                                      |
-
----
-
-## 🔒 Safety First
-
-Branchit acts as a transparent cockpit for Git:
-
-> [!IMPORTANT]
-> **No Shell Strings**: Every Git invocation uses argument arrays run with `shell: false`. Refs are explicitly guarded with `--` to prevent remote command injection.
-
-> [!TIP]
-> **No Silent Stashing**: Switching with a dirty tree always prompts you first, showing the exact Git command pipeline. Partial failures are reported transparently.
-
-> [!WARNING]
-> **Ancestry-Based Sweeping**: Branch deletion safety is determined by checking Git merge history, never by checking branch names, age, or creation dates.
-
----
-
-## ⚙️ Configuration
-
-Branchit loads settings from three places in order of precedence:
-
-1. Built-in defaults
-2. User configuration (`~/.config/branchit/config.toml`)
-3. Repository configuration (`.branchit.toml`)
-
-Invalid TOML files are reported precisely with `file:field — error` and skipped safely without crashing the TUI.
+Settings layer: built-in defaults → `~/.config/branchit/config.toml` →
+`.branchit.toml` in the repository. Invalid files are reported precisely and
+skipped. `branchit config` shows the result and where each value came from.
 
 ```toml
-# .branchit.toml
 [ui]
-command_preview = true      # Show the underlying git command at the bottom of screens
-theme = "default"           # "default" or "none" (black & white)
-icons = true                # Enable Unicode glyphs (falls back to ASCII if false)
+theme = "catppuccin"          # default, catppuccin, tokyo-night, gruvbox, none
 
 [branches]
-default_base = "main"       # Base branch used for comparison and sweeper
-protected = ["main", "release/*"] # Branches that can never be deleted
+default_base = "main"
+protected = ["main", "release/*"]
 
 [commit]
-scopes = ["cli", "git", "ui", "api"] # Auto-complete scope suggestions
-max_subject_length = 72     # Enforce maximum subject character limit
-require_scope = false       # Block committing if scope is empty
+scopes = ["cli", "api"]
+max_subject_length = 72
 
 [checks]
-# Pre-commit checks. Repo-defined commands require explicit trust before running.
-# If omitted, Branchit auto-detects scripts from package.json.
 commands = ["npm run typecheck", "npm test"]
+
+[worktrees]
+root = "../{repo}-wt/{branch}"
+
+[keys]
+sweep = "x"                   # rebind dashboard keys by command name
+
+[ai]
+# Any program that reads a diff on stdin and prints a commit message.
+command = "llm -s 'Write a conventional commit message for this diff.'"
 ```
 
-See [`.branchit.example.toml`](.branchit.example.toml) for a fully documented configuration template.
+See [`.branchit.example.toml`](.branchit.example.toml) for every option.
 
----
+## Learn more
 
-## 🤝 Contributing & Docs
+- [Understanding Git better with Branchit](docs/learn-git.md) — branches,
+  staging, upstreams, sweeping, undo and worktrees explained
+- [Architecture](docs/architecture.md) · [Testing](docs/testing.md) ·
+  [Contributing](CONTRIBUTING.md) · [Changelog](CHANGELOG.md)
 
-Check out our documentation for architectural design:
+## License
 
-- [Architecture Overview](docs/architecture.md)
-- [Git Safety Guarantees & Check Trust Model](docs/git-safety.md)
-- [Testing Setup](docs/testing.md)
-- [Project Progress Checklist](docs/progress.md)
-
----
-
-## 📄 License
-
-Licensed under the [MIT License](LICENSE).
+[MIT](LICENSE)

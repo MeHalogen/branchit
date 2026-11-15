@@ -104,10 +104,17 @@ export function Worktrees(props: {
         })}
       </Box>
       <Box marginTop={1}>
-        <Text color={color("dim")}>
-          enter open here   a add for branch   n new branch{" "}
-          {selected && !selected.isMain && !selected.isCurrent ? "  d remove" : ""}
-          {stale ? "   p prune" : ""}   esc close
+        <Text color={color("dim")} wrap="wrap">
+          {[
+            "enter open here",
+            "a add",
+            "n new",
+            selected && !selected.isMain && !selected.isCurrent ? "d remove" : null,
+            stale ? "p prune" : null,
+            "esc close",
+          ]
+            .filter(Boolean)
+            .join("   ")}
         </Text>
       </Box>
     </Box>

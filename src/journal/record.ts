@@ -128,9 +128,12 @@ export class Recorder {
     | { ok: false; stage: "stash" | "switch"; result: Extract<ActionResult, { ok: false }> }
   > {
     const before = await this.head();
+    const stashBefore = await this.tip("refs/stash");
     const stash = await stashBeforeSwitch(this.git.client, message);
     if (!stash.ok) return { ok: false, stage: "stash", result: stash };
-    const stashSha = await this.tip("refs/stash");
+    // `git stash push` exits 0 with nothing to save; never adopt an older stash.
+    const stashTip = await this.tip("refs/stash");
+    const stashSha = stashTip !== stashBefore ? stashTip : null;
     const sw = await switchBranch(this.git.client, name);
     if (!sw.ok) return { ok: false, stage: "switch", result: sw };
     if (stashSha)
@@ -179,10 +182,12 @@ export class Recorder {
    */
   async discard(paths: string[]): Promise<ActionResult> {
     const message = `branchit: discard ${paths.length === 1 ? paths[0] : `${paths.length} files`}`;
+    const stashBefore = await this.tip("refs/stash");
     const res = await this.runAction(workspaceCommands.stashPaths(message, paths));
     if (res.ok) {
+      // Nothing to discard leaves refs/stash unchanged; don't journal someone else's stash.
       const stashSha = await this.tip("refs/stash");
-      if (stashSha) this.record({ op: "discard", paths, stashSha });
+      if (stashSha && stashSha !== stashBefore) this.record({ op: "discard", paths, stashSha });
     }
     return res;
   }

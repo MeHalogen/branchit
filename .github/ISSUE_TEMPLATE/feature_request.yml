@@ -1,0 +1,21 @@
+name: Feature request
+description: A workflow Branchit should make easier
+labels: [enhancement]
+body:
+  - type: textarea
+    id: workflow
+    attributes:
+      label: What are you trying to do?
+      description: Describe the workflow and the git commands you run today.
+    validations:
+      required: true
+  - type: textarea
+    id: idea
+    attributes:
+      label: What would good look like?
+  - type: checkboxes
+    id: undo
+    attributes:
+      label: Safety
+      options:
+        - label: If this changes repository state, I've thought about how it would be previewed and undone.
