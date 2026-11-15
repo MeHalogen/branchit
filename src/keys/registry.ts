@@ -14,6 +14,8 @@ export type CommandId =
   | "dashboard.fetch"
   | "dashboard.prepare"
   | "dashboard.workingTree"
+  | "global.undo"
+  | "global.recover"
   | "global.help"
   | "global.palette"
   | "global.search"
@@ -78,6 +80,19 @@ export const COMMANDS: Command[] = [
     shortcut: "w",
     category: "View",
     keywords: ["status", "working", "tree", "files", "diff"],
+  },
+  {
+    id: "global.undo",
+    title: "Undo last operation",
+    shortcut: "u",
+    category: "App",
+    keywords: ["undo", "revert", "back", "oops", "restore"],
+  },
+  {
+    id: "global.recover",
+    title: "Recover lost work (reflog)",
+    category: "App",
+    keywords: ["recover", "reflog", "lost", "restore", "time machine", "rescue"],
   },
   {
     id: "global.refresh",

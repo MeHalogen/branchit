@@ -101,7 +101,7 @@ describe("Sweeper TUI flow", () => {
 
     // Undo.
     ui.stdin.write("u");
-    await waitFor(ui, "Restored 1 branch");
+    await waitFor(ui, "Undone: Deleted branch feat/merged");
     const branches = await git.listBranches();
     expect(branches.find((b) => b.name === "feat/merged")).toBeDefined();
     ui.unmount();

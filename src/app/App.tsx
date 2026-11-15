@@ -6,22 +6,14 @@ import { Toast, type ToastState } from "../components/Toast.js";
 import { defaultConfig, type ResolvedConfig } from "../config/schema.js";
 import { markOnboarded } from "../config/state.js";
 import { isTrusted, trustRepo } from "../config/trust.js";
-import {
-  bulkDeleteBranches,
-  commitChanges,
-  createBranch,
-  type DeleteOutcome,
-  type DeleteSpec,
-  recreateBranches,
-  stagePaths,
-  stashBeforeSwitch,
-  switchBranch,
-  switchTrackNew,
-  unstagePaths,
-} from "../git/actions.js";
+import { type DeleteSpec, stagePaths, unstagePaths } from "../git/actions.js";
 import type { Branch, WorkingTreeState } from "../git/models.js";
+import { type ReflogEntry, readReflog, reflogPreview } from "../git/recent.js";
 import type { GitRepository } from "../git/repository.js";
-import { fetchRemote, pushCurrent } from "../git/sync.js";
+import { fetchRemote } from "../git/sync.js";
+import { Journal, type JournalEntry } from "../journal/journal.js";
+import { Recorder } from "../journal/record.js";
+import { executeUndo, planUndo, readUndoContext, type UndoPlan } from "../journal/undo.js";
 import { type CommandId, commandByShortcut } from "../keys/registry.js";
 import { BranchSwitcher } from "../screens/BranchSwitcher.js";
 import { CommandPalette } from "../screens/CommandPalette.js";
@@ -30,7 +22,9 @@ import { Dashboard } from "../screens/Dashboard.js";
 import { HelpOverlay } from "../screens/HelpOverlay.js";
 import { NewBranch } from "../screens/NewBranch.js";
 import { PrReadiness } from "../screens/PrReadiness.js";
+import { RecoverScreen } from "../screens/RecoverScreen.js";
 import { Sweeper } from "../screens/Sweeper.js";
+import { UndoScreen } from "../screens/UndoScreen.js";
 import { Welcome } from "../screens/Welcome.js";
 import { sanitizeForDisplay } from "../utils/format.js";
 import { openUrl } from "../utils/open-url.js";
@@ -54,6 +48,8 @@ type View =
   | "sweeper"
   | "commit"
   | "pr"
+  | "undo"
+  | "recover"
   | "welcome";
 
 interface ModalState {
@@ -72,12 +68,13 @@ const IMPLEMENTED_COMMANDS: ReadonlySet<CommandId> = new Set([
   "dashboard.sweep",
   "dashboard.commit",
   "dashboard.prepare",
+  "global.undo",
+  "global.recover",
   "global.refresh",
   "global.help",
   "global.quit",
 ]);
 
-/** Local leaf name of a base ref, e.g. "origin/main" -> "main". */
 export function App(props: {
   git: GitRepository;
   initial: RepoData;
@@ -102,6 +99,16 @@ export function App(props: {
   const [sweep, setSweep] = useState<{ base: string; candidates: SweepCandidate[] } | null>(null);
   const [commitWt, setCommitWt] = useState<WorkingTreeState | null>(null);
   const [prCtx, setPrCtx] = useState<PrContext | null>(null);
+  const [undo, setUndo] = useState<{
+    entry: JournalEntry | null;
+    plan: UndoPlan | null;
+    history: JournalEntry[];
+  } | null>(null);
+  const [reflog, setReflog] = useState<ReflogEntry[] | null>(null);
+
+  // Every mutation goes through the recorder so it can be undone later.
+  const journal = useMemo(() => Journal.forGitDir(git.gitDir), [git.gitDir]);
+  const rec = useMemo(() => new Recorder(git, journal), [git, journal]);
 
   // Pre-commit checks: explicit config commands take precedence; otherwise they
   // are detected from the repo manifest. Advisory only — never run without
@@ -138,7 +145,7 @@ export function App(props: {
   const doLocalSwitch = useCallback(
     async (name: string) => {
       setBusy(`Switching to ${name}…`);
-      const res = await switchBranch(git.client, name);
+      const res = await rec.switchBranch(name);
       setBusy(null);
       if (res.ok) {
         await reload();
@@ -166,17 +173,13 @@ export function App(props: {
             setModal(null);
             if (key !== "s") return;
             setBusy("Stashing changes…");
-            const stashRes = await stashBeforeSwitch(
-              git.client,
-              `branchit: switch to ${name}`,
-            );
-            if (!stashRes.ok) {
+            const sw = await rec.stashAndSwitch(name, `branchit: switch to ${name}`);
+            if (!sw.ok && sw.stage === "stash") {
               setBusy(null);
-              const t = toastForError(stashRes.error);
+              const t = toastForError(sw.result.error);
               notify({ kind: "error", message: t.message, detail: t.detail });
               return;
             }
-            const sw = await switchBranch(git.client, name);
             setBusy(null);
             await reload();
             if (sw.ok) {
@@ -187,7 +190,7 @@ export function App(props: {
               });
             } else {
               // Partial completion: stash succeeded, switch failed. Be honest.
-              const t = toastForError(sw.error);
+              const t = toastForError(sw.result.error);
               notify({
                 kind: "error",
                 message: `Stashed, but switch failed: ${t.message}. Your changes are safe in the stash.`,
@@ -200,7 +203,7 @@ export function App(props: {
       const t = toastForError(res.error);
       notify({ kind: "error", message: t.message, detail: t.detail });
     },
-    [git, notify, reload],
+    [notify, rec, reload],
   );
 
   const onSelectBranch = useCallback(
@@ -239,7 +242,7 @@ export function App(props: {
           onAction: async () => {
             setModal(null);
             setBusy(`Creating ${localName}…`);
-            const res = await switchTrackNew(git.client, localName, branch.name);
+            const res = await rec.switchTrackNew(localName, branch.name);
             setBusy(null);
             if (res.ok) {
               await reload();
@@ -255,7 +258,7 @@ export function App(props: {
       }
       void doLocalSwitch(branch.name);
     },
-    [data.branches, doLocalSwitch, git, notify, reload],
+    [data.branches, doLocalSwitch, notify, rec, reload],
   );
 
   // ── Fetch ─────────────────────────────────────────────────────────────────
@@ -283,7 +286,7 @@ export function App(props: {
   const onCreateBranch = useCallback(
     async (name: string, base: string) => {
       setBusy(`Creating ${name}…`);
-      const res = await createBranch(git.client, name, base);
+      const res = await rec.createBranch(name, base);
       setBusy(null);
       if (res.ok) {
         await reload();
@@ -294,7 +297,7 @@ export function App(props: {
         notify({ kind: "error", message: t.message, detail: t.detail });
       }
     },
-    [git, notify, reload],
+    [notify, rec, reload],
   );
 
   // ── Sweeper ─────────────────────────────────────────────────────────────
@@ -325,28 +328,85 @@ export function App(props: {
     notify,
   ]);
 
+  /** Undo a specific journal entry after re-validating it against the repo. */
   const runUndo = useCallback(
-    async (outcomes: DeleteOutcome[]) => {
-      setBusy("Restoring branches…");
-      const { restored, failed } = await recreateBranches(git.client, outcomes);
+    async (entry: JournalEntry) => {
+      setBusy("Undoing…");
+      const plan = planUndo(entry, await readUndoContext(git));
+      if (!plan.ok) {
+        setBusy(null);
+        notify({ kind: "warning", message: plan.reason });
+        return;
+      }
+      const res = await executeUndo(git, journal, entry, plan);
       setBusy(null);
       await reload();
-      if (failed.length === 0) {
-        notify({ kind: "success", message: `Restored ${restored.length} branch(es)` });
+      setUndo(null);
+      setView("dashboard");
+      if (res.ok) {
+        notify({ kind: "success", message: `Undone: ${plan.summary}` });
       } else {
         notify({
-          kind: "warning",
-          message: `Restored ${restored.length}, could not restore ${failed.length}`,
+          kind: "error",
+          message: `Undo stopped at ${res.failed?.command}: ${res.failed?.message}`,
+          detail: res.ran.length ? `Already ran: ${res.ran.join("; ")}` : undefined,
         });
       }
     },
-    [git, notify, reload],
+    [git, journal, notify, reload],
+  );
+
+  const openUndo = useCallback(async () => {
+    const history = journal.history();
+    const entry = history[0] ?? null;
+    const plan = entry ? planUndo(entry, await readUndoContext(git)) : null;
+    setUndo({ entry, plan, history });
+    setView("undo");
+  }, [git, journal]);
+
+  const openRecover = useCallback(async () => {
+    setBusy("Reading reflog…");
+    const entries = await readReflog(git.client);
+    setBusy(null);
+    setReflog(entries);
+    setView("recover");
+  }, [git]);
+
+  const onRecover = useCallback(
+    (entry: ReflogEntry) => {
+      const name = `recovered/${entry.sha.slice(0, 7)}`;
+      setModal({
+        title: "Restore as a new branch?",
+        lines: [
+          `Branch:  ${name}`,
+          `Commit:  ${entry.sha.slice(0, 7)} ${entry.subject}`,
+          "Nothing else changes; you stay on the current branch.",
+        ],
+        commandPreview: [`git branch ${name} ${entry.sha}`],
+        actions: [{ key: "enter", label: "Create branch", tone: "primary" }],
+        onAction: async (key) => {
+          setModal(null);
+          if (key !== "enter") return;
+          const res = await rec.createBranchAt(name, entry.sha);
+          if (res.ok) {
+            await reload();
+            setReflog(null);
+            setView("dashboard");
+            notify({ kind: "success", message: `Created ${name}` });
+          } else {
+            const t = toastForError(res.error);
+            notify({ kind: "error", message: t.message, detail: t.detail });
+          }
+        },
+      });
+    },
+    [notify, rec, reload],
   );
 
   const performDelete = useCallback(
     async (specs: DeleteSpec[]) => {
       setBusy(`Deleting ${specs.length} branch(es)…`);
-      const outcomes = await bulkDeleteBranches(git.client, specs);
+      const { outcomes, entry } = await rec.deleteBranches(specs);
       setBusy(null);
       await reload();
       const deleted = outcomes.filter((o) => o.ok);
@@ -360,7 +420,7 @@ export function App(props: {
         lines.push(`Kept ${f.name} — ${f.error?.message ?? "could not delete"}`);
 
       // Result modal offers undo for the branches that were actually deleted.
-      const canUndo = deleted.some((o) => o.restoreSha);
+      const canUndo = entry !== null;
       setModal({
         title:
           failed.length === 0
@@ -376,11 +436,11 @@ export function App(props: {
           : [{ key: "enter", label: "Done" }],
         onAction: (key) => {
           setModal(null);
-          if (key === "u") void runUndo(deleted);
+          if (key === "u" && entry) void runUndo(entry);
         },
       });
     },
-    [git, reload, runUndo],
+    [rec, reload, runUndo],
   );
 
   const onSweepDelete = useCallback(
@@ -432,11 +492,11 @@ export function App(props: {
 
   const onCommit = useCallback(
     async (message: string) => {
-      const res = await commitChanges(git.client, message);
+      const res = await rec.commit(message);
       if (res.ok) await reload();
       return res;
     },
-    [git, reload],
+    [rec, reload],
   );
 
   // ── PR readiness ──────────────────────────────────────────────────────────
@@ -465,7 +525,7 @@ export function App(props: {
       return;
     }
     setBusy("Pushing…");
-    const res = await pushCurrent(git.client, {
+    const res = await rec.push({
       hasUpstream: ctx.readiness.hasUpstream,
       remote: ctx.pushRemote,
       branch: ctx.readiness.head,
@@ -483,7 +543,7 @@ export function App(props: {
     const current = fresh.branches.find((b) => b.kind === "local" && b.isCurrent);
     const next = await gatherPrReadiness(git.client, fresh.state, current?.upstream ?? null, base);
     setPrCtx(next);
-  }, [git, notify, prCtx, reload]);
+  }, [git, notify, prCtx, rec, reload]);
 
   const onOpenUrl = useCallback(
     async (url: string) => {
@@ -518,6 +578,12 @@ export function App(props: {
         case "dashboard.prepare":
           void openPr();
           break;
+        case "global.undo":
+          void openUndo();
+          break;
+        case "global.recover":
+          void openRecover();
+          break;
         case "global.refresh":
           void reload().then(() =>
             notify({ kind: "info", message: "Refreshed" }),
@@ -536,7 +602,7 @@ export function App(props: {
           });
       }
     },
-    [exit, notify, onFetch, openSweeper, openCommit, openPr, reload],
+    [exit, notify, onFetch, openSweeper, openCommit, openPr, openUndo, openRecover, reload],
   );
 
   const isAvailable = useCallback(
@@ -549,6 +615,8 @@ export function App(props: {
     },
     [data.state.remotes.length],
   );
+
+  const loadReflogPreview = useCallback((sha: string) => reflogPreview(git.client, sha), [git]);
 
   // ── Global key handling (only when no modal/overlay owns input) ────────────
   const modalOpen = modal !== null;
@@ -586,6 +654,7 @@ export function App(props: {
     { key: "f", label: "fetch" },
     { key: "c", label: "commit" },
     { key: "s", label: "sweep" },
+    { key: "u", label: "undo" },
     { key: ":", label: "commands" },
     { key: "?", label: "help" },
     { key: "q", label: "quit" },
@@ -685,6 +754,37 @@ export function App(props: {
           onOpenUrl={onOpenUrl}
           onClose={() => {
             setPrCtx(null);
+            setView("dashboard");
+          }}
+        />
+      ) : null}
+
+      {view === "undo" && undo ? (
+        <UndoScreen
+          entry={undo.entry}
+          plan={undo.plan}
+          history={undo.history}
+          width={width}
+          active={modal === null && !busy}
+          onConfirm={() => {
+            if (undo.entry) void runUndo(undo.entry);
+          }}
+          onClose={() => {
+            setUndo(null);
+            setView("dashboard");
+          }}
+        />
+      ) : null}
+
+      {view === "recover" && reflog ? (
+        <RecoverScreen
+          entries={reflog}
+          width={width}
+          loadPreview={loadReflogPreview}
+          active={modal === null}
+          onRestore={onRecover}
+          onClose={() => {
+            setReflog(null);
             setView("dashboard");
           }}
         />
