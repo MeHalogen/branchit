@@ -1,7 +1,8 @@
 /**
  * Large-repository benchmark: 2,000 local branches (1,800 merged, 200 with
  * unique commits). `npm run bench` runs it alone against the 1 s budget; in
- * the normal (parallel) suite it is a loose regression guard so it never flakes.
+ * the normal (parallel) suite it is only a loose guard against catastrophic
+ * regressions.
  */
 
 import { execa } from "execa";
@@ -20,12 +21,11 @@ afterEach(async () => {
   await Promise.all(repos.splice(0).map((r) => r.cleanup()));
 });
 
-// Windows process spawns are several times slower than Unix ones.
-const BUDGET_MS = process.env["BRANCHIT_BENCH"]
-  ? 1000
-  : process.platform === "win32"
-    ? 30_000
-    : 10_000;
+// `npm run bench` runs this file alone and enforces the real 1 s budget. In the
+// normal suite it shares the machine with ~30 other test files spawning git, so
+// wall time there says little (a loaded macOS runner took 12.7 s); the guard
+// only catches a catastrophic regression such as per-branch process spawns.
+const BUDGET_MS = process.env["BRANCHIT_BENCH"] ? 1000 : 60_000;
 
 describe("large repository performance", () => {
   it("lists and sweeps 2,000 branches within budget", async () => {
