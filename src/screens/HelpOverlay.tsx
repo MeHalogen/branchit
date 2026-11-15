@@ -1,7 +1,7 @@
 
 import { Box, Text, useInput } from "ink";
 import { useColor } from "../app/theme-context.js";
-import { COMMANDS } from "../keys/registry.js";
+import { COMMANDS, shortcutFor } from "../keys/registry.js";
 
 /** Contextual help. Shows the current screen's keys first, then global keys. */
 export function HelpOverlay(props: {
@@ -25,13 +25,9 @@ export function HelpOverlay(props: {
           ["esc", "clear search / close"],
         ]
       : [
-          ["b", "switch branch"],
-          ["n", "new branch"],
-          ["s", "sweep merged branches"],
-          ["u", "undo last operation"],
-          ["f", "fetch remote"],
-          ["r", "refresh"],
           [":", "command palette (try: recover)"],
+          ["?", "this help"],
+          ["q", "quit"],
         ];
 
   return (
@@ -63,11 +59,11 @@ export function HelpOverlay(props: {
         <Text color={color("dim")}>Global</Text>
       </Box>
       <Box flexDirection="column">
-        {COMMANDS.filter((c) => c.shortcut).map((c) => (
+        {COMMANDS.filter((c) => shortcutFor(c.id)).map((c) => (
           <Box key={c.id}>
             <Box width={12}>
               <Text color={color("primary")} bold>
-                {c.shortcut}
+                {shortcutFor(c.id)}
               </Text>
             </Box>
             <Text color={color("text")}>{c.title}</Text>

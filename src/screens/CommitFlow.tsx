@@ -1,9 +1,11 @@
 import { Box, Text, useInput } from "ink";
 import { useMemo, useRef, useState } from "react";
 import { useColor, useTheme } from "../app/theme-context.js";
+import { Spinner } from "../components/Spinner.js";
 import type { CommitResult } from "../git/actions.js";
 import type { WorkingTreeState } from "../git/models.js";
 import { sanitizeForDisplay } from "../utils/format.js";
+import type { AiMessage } from "../workflows/ai-commit.js";
 import type {
   CheckCommand,
   CheckRunResult,
@@ -42,6 +44,7 @@ type Stage =
   | "body"
   | "preview"
   | "checksTrust"
+  | "aiTrust"
   | "checks"
   | "checksFailed"
   | "committing"
@@ -72,6 +75,13 @@ export function CommitFlow(props: {
     signal: AbortSignal,
   ) => Promise<CheckRunResult>;
   onDone: () => void;
+  /** Optional `[ai] command` integration (ctrl+g). Absent when not configured. */
+  ai?: {
+    command: string;
+    trusted: boolean;
+    onTrust: () => void;
+    suggest: () => Promise<{ ok: true; message: AiMessage } | { ok: false; error: string }>;
+  };
 }) {
   const color = useColor();
   const { glyphs } = useTheme();
@@ -107,6 +117,33 @@ export function CommitFlow(props: {
   const [checkStates, setCheckStates] = useState<CheckState[]>([]);
   const [reconciling, setReconciling] = useState(false);
   const abortRef = useRef<AbortController | null>(null);
+  const [aiTrusted, setAiTrusted] = useState(props.ai?.trusted ?? false);
+  const [aiPending, setAiPending] = useState(false);
+  const [aiError, setAiError] = useState<string | null>(null);
+  const aiReturnStage = useRef<Stage>("subject");
+
+  const runAi = async () => {
+    if (!props.ai || aiPending) return;
+    setAiPending(true);
+    setAiError(null);
+    const res = await props.ai.suggest();
+    setAiPending(false);
+    if (!res.ok) {
+      setAiError(res.error);
+      return;
+    }
+    const m = res.message;
+    const ti = m.type ? TYPES.findIndex((t) => t.name === m.type) : -1;
+    if (ti >= 0) setTypeIdx(ti);
+    if (m.scope !== null) {
+      setScope(m.scope);
+      setScopeTouched(true);
+    }
+    setBreaking(m.breaking);
+    setSubject(m.subject);
+    setBody(m.body);
+    setStage("subject");
+  };
 
   // Until the user types a scope, the inferred scope is used (and shown in the
   // live preview). Typing replaces it; an empty field on Enter accepts it.
@@ -182,6 +219,31 @@ export function CommitFlow(props: {
       stage !== "checks"
     ) {
       props.onDone();
+      return;
+    }
+
+    // ctrl+g: ask the configured [ai] command for a message (after trust).
+    if (
+      key.ctrl &&
+      input === "g" &&
+      props.ai &&
+      (stage === "type" || stage === "scope" || stage === "subject" || stage === "body")
+    ) {
+      if (aiTrusted) void runAi();
+      else {
+        aiReturnStage.current = stage;
+        setStage("aiTrust");
+      }
+      return;
+    }
+
+    if (stage === "aiTrust") {
+      if (input === "t") {
+        props.ai?.onTrust();
+        setAiTrusted(true);
+        setStage(aiReturnStage.current);
+        void runAi();
+      } else if (key.return || input === "n") setStage(aiReturnStage.current);
       return;
     }
 
@@ -356,6 +418,32 @@ export function CommitFlow(props: {
         </Box>
       ) : null}
 
+      {props.ai && (stage === "type" || stage === "scope" || stage === "subject" || stage === "body") ? (
+        <Box marginTop={1}>
+          {aiPending ? (
+            <Spinner label={`Asking ${props.ai.command.split(/\s+/)[0]}…`} />
+          ) : aiError ? (
+            <Text color={color("danger")}>
+              {glyphs.cross} {sanitizeForDisplay(aiError)}
+            </Text>
+          ) : (
+            <Text color={color("dim")}>ctrl+g suggest a message with {sanitizeForDisplay(props.ai.command.split(/\s+/)[0] ?? "")}</Text>
+          )}
+        </Box>
+      ) : null}
+
+      {stage === "aiTrust" && props.ai ? (
+        <Box flexDirection="column" marginTop={1}>
+          <Text color={color("warning")} bold>
+            Run this command with your staged diff on stdin?
+          </Text>
+          <Text color={color("info")}> {sanitizeForDisplay(props.ai.command)}</Text>
+          <Text color={color("dim")}>
+            It runs without a shell. Branchit asks again if the command changes.
+          </Text>
+        </Box>
+      ) : null}
+
       {stage === "preview" ? (
         <PreviewStage
           message={buildCommitMessage(draft)}
@@ -397,6 +485,7 @@ function stageLabel(stage: Stage): string {
     body: "body",
     preview: "preview",
     checksTrust: "trust checks",
+    aiTrust: "trust AI command",
     checks: "running checks",
     checksFailed: "checks failed",
     committing: "committing",
@@ -420,6 +509,8 @@ function footerFor(stage: Stage, ok: boolean | undefined, breaking: boolean): st
       return "enter commit   e edit   esc cancel";
     case "checksTrust":
       return "enter run once   t trust repo   s skip checks   esc cancel";
+    case "aiTrust":
+      return "t trust and run   enter not now   esc cancel";
     case "checks":
       return "running checks…   esc cancel";
     case "checksFailed":
@@ -468,13 +559,13 @@ function ChecksStage(props: {
   return (
     <Box flexDirection="column" marginTop={1}>
       {props.states.map((s) => {
-        const g =
+const g =
           s.status === "passed"
             ? glyphs.check
             : s.status === "failed"
               ? glyphs.cross
               : s.status === "running"
-                ? glyphs.spinnerFrames[0]!
+                ? null
                 : s.status === "cancelled"
                   ? "-"
                   : "○";
@@ -489,7 +580,7 @@ function ChecksStage(props: {
         return (
           <Box key={s.command.name}>
             <Box width={2}>
-              <Text color={color(tone as never)}>{g}</Text>
+              {g === null ? <Spinner showElapsed={false} /> : <Text color={color(tone as never)}>{g}</Text>}
             </Box>
             <Box width={22}>
               <Text color={color("text")}>{s.command.display}</Text>

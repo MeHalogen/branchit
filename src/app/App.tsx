@@ -1,6 +1,7 @@
-import { Box, Text, useApp, useInput, useStdout } from "ink";
+import { Box, useApp, useInput, useStdout } from "ink";
 import { useCallback, useEffect, useMemo, useRef, useState } from "react";
 import { type ConfirmAction, ConfirmModal } from "../components/ConfirmModal.js";
+import { Spinner } from "../components/Spinner.js";
 import { type Hint, StatusBar } from "../components/StatusBar.js";
 import { Toast, type ToastState } from "../components/Toast.js";
 import { defaultConfig, type ResolvedConfig } from "../config/schema.js";
@@ -24,7 +25,7 @@ import {
 import { Journal, type JournalEntry } from "../journal/journal.js";
 import { Recorder } from "../journal/record.js";
 import { executeUndo, planUndo, readUndoContext, type UndoPlan } from "../journal/undo.js";
-import { COMMANDS, type CommandId, commandByShortcut } from "../keys/registry.js";
+import { COMMANDS, type CommandId, commandByShortcut, shortcutFor } from "../keys/registry.js";
 import { BranchSwitcher } from "../screens/BranchSwitcher.js";
 import { CommandPalette } from "../screens/CommandPalette.js";
 import { CommitFlow } from "../screens/CommitFlow.js";
@@ -42,6 +43,7 @@ import { type FileRow, WorkingTree } from "../screens/WorkingTree.js";
 import { Worktrees } from "../screens/Worktrees.js";
 import { relativeTime, sanitizeForDisplay } from "../utils/format.js";
 import { openUrl } from "../utils/open-url.js";
+import { aiTrustKey, generateCommitMessage } from "../workflows/ai-commit.js";
 import { commandsFromStrings, detectChecks, runChecks } from "../workflows/checks.js";
 import { gatherPrReadiness, type PrContext } from "../workflows/pr.js";
 import {
@@ -57,7 +59,6 @@ import {
 } from "../workflows/worktrees.js";
 import { toastForError } from "./error-text.js";
 import { loadRepoData, type RepoData } from "./loadRepo.js";
-import { useColor } from "./theme-context.js";
 
 type View =
   | "dashboard"
@@ -124,7 +125,6 @@ export function App(props: {
   const config = props.config ?? defaultConfig();
   const { exit } = useApp();
   const { stdout } = useStdout();
-  const color = useColor();
   const width = Math.min(100, Math.max(50, (stdout?.columns ?? 80)));
 
   const [data, setData] = useState<RepoData>(props.initial);
@@ -583,6 +583,27 @@ export function App(props: {
     [rec, reload],
   );
 
+  // ── Optional AI commit message ([ai] command) ─────────────────────────────
+  const aiProps = useMemo(() => {
+    const command = config.ai.command;
+    if (!command) return undefined;
+    return {
+      command,
+      trusted: isTrusted(aiTrustKey(git.root), [command]),
+      onTrust: () => trustRepo(aiTrustKey(git.root), [command]),
+      suggest: async () => {
+        const diff = await git.client.run({
+          args: ["diff", "--cached", "--no-color", "--no-ext-diff"],
+          display: "git diff --cached",
+        });
+        if (!diff.ok || !diff.stdout.trim()) {
+          return { ok: false as const, error: "Nothing staged to describe." };
+        }
+        return generateCommitMessage(git.root, command, diff.stdout);
+      },
+    };
+  }, [config.ai.command, git]);
+
   // ── PR readiness ──────────────────────────────────────────────────────────
   const openPr = useCallback(async () => {
     if (data.state.isDetached || !data.state.currentBranch) {
@@ -930,7 +951,7 @@ export function App(props: {
     }
     for (const c of COMMANDS) {
       if (!IMPLEMENTED_COMMANDS.has(c.id) || c.id === "global.search") continue;
-      items.push({ kind: "command", name: c.title, value: c.id, detail: c.shortcut });
+      items.push({ kind: "command", name: c.title, value: c.id, detail: shortcutFor(c.id) });
     }
     if (log.ok) {
       for (const line of log.stdout.split("\n")) {
@@ -1260,15 +1281,19 @@ export function App(props: {
   );
 
   // ── Render ─────────────────────────────────────────────────────────────────
+  const hint = (id: CommandId, label: string): Hint[] => {
+    const key = shortcutFor(id);
+    return key ? [{ key, label }] : [];
+  };
   const dashboardHints: Hint[] = [
-    { key: "b", label: "switch" },
-    { key: "n", label: "new" },
-    { key: "f", label: "fetch" },
-    { key: "c", label: "commit" },
-    { key: "s", label: "sweep" },
-    { key: "u", label: "undo" },
-    { key: "w", label: "files" },
-    { key: "/", label: "search" },
+    ...hint("dashboard.switchBranch", "switch"),
+    ...hint("dashboard.newBranch", "new"),
+    ...hint("dashboard.commit", "commit"),
+    ...hint("dashboard.sweep", "sweep"),
+    ...hint("global.undo", "undo"),
+    ...hint("dashboard.workingTree", "files"),
+    ...hint("dashboard.worktrees", "worktrees"),
+    ...hint("global.search", "search"),
     { key: ":", label: "commands" },
     { key: "?", label: "help" },
     { key: "q", label: "quit" },
@@ -1348,6 +1373,7 @@ export function App(props: {
             trustRepo(git.root, checkDisplays);
             setChecksTrusted(true);
           }}
+          ai={aiProps}
           onRunChecks={(onProgress, signal) =>
             runChecks(git.root, checks, onProgress, signal)
           }
@@ -1510,7 +1536,7 @@ export function App(props: {
 
       {busy ? (
         <Box paddingX={1} marginTop={1}>
-          <Text color={color("primary")}>{sanitizeForDisplay(busy)}</Text>
+          <Spinner label={sanitizeForDisplay(busy)} />
         </Box>
       ) : null}
 

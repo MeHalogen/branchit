@@ -11,6 +11,7 @@ import type { GitClient } from "../git/client.js";
 import { query } from "../git/command.js";
 import type { Branch } from "../git/models.js";
 import { ageInDays, humanAge } from "../utils/format.js";
+import { mapPool } from "../utils/pool.js";
 
 export type BranchClassification =
   | "safe_merged"
@@ -181,33 +182,28 @@ export async function gatherSweepCandidates(
       : [],
   );
 
-  const out: SweepCandidate[] = [];
-  for (const branch of locals) {
+  // Bounded parallelism: thousands of branches must not mean thousands of
+  // sequential git spawns, nor thousands at once.
+  return mapPool(locals, 12, async (branch) => {
     const protectedByPolicy =
       branch.isCurrent ||
       (Boolean(branch.worktreePath) && !mergedSet.has(branch.name)) ||
       isProtectedName(branch.name, config.protectedPatterns);
 
     if (protectedByPolicy) {
-      out.push(
-        classifyBranch(
-          branch,
-          { merged: false, uniqueCommitCount: 0, patchEquivalent: false },
-          config,
-        ),
+      return classifyBranch(
+        branch,
+        { merged: false, uniqueCommitCount: 0, patchEquivalent: false },
+        config,
       );
-      continue;
     }
 
     if (mergedSet.has(branch.name)) {
-      out.push(
-        classifyBranch(
-          branch,
-          { merged: true, uniqueCommitCount: 0, patchEquivalent: false },
-          config,
-        ),
+      return classifyBranch(
+        branch,
+        { merged: true, uniqueCommitCount: 0, patchEquivalent: false },
+        config,
       );
-      continue;
     }
 
     // Bounded extra work for the non-merged minority.
@@ -222,9 +218,8 @@ export async function gatherSweepCandidates(
       const hasPlus = lines.some((l) => l.startsWith("+"));
       patchEquivalent = lines.length > 0 && !hasPlus;
     }
-    out.push(classifyBranch(branch, { merged: false, uniqueCommitCount, patchEquivalent }, config));
-  }
-  return out;
+    return classifyBranch(branch, { merged: false, uniqueCommitCount, patchEquivalent }, config);
+  });
 }
 
 /** Group order for display; protected shown last and de-emphasized. */
