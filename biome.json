@@ -6,7 +6,7 @@
     "useIgnoreFile": true
   },
   "files": {
-    "includes": ["**", "!!**/dist", "!!**/.superpowers"]
+    "includes": ["**", "!!**/dist", "!!**/.superpowers", "!**/*.md"]
   },
   "formatter": {
     "enabled": true,

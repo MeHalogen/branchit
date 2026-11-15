@@ -6,7 +6,7 @@ build argument arrays that a single safe executor runs.
 
 ```
 ┌────────────────────────────────────────────────────────────┐
-│ cli.tsx            entrypoint: arg parsing, TTY handling,    │
+│ cli.ts             entrypoint: arg parsing, TTY handling,    │
 │                    subcommands (status/doctor/switch), Ink   │
 ├────────────────────────────────────────────────────────────┤
 │ app/               App state machine, screen routing,        │
