@@ -3,6 +3,34 @@
 All notable changes to Branchit are documented here. This project follows
 [Semantic Versioning](https://semver.org/) and [Conventional Commits](https://www.conventionalcommits.org/).
 
+## [0.7.0](https://github.com/MeHalogen/branchit/compare/branchit-v0.6.0...branchit-v0.7.0) (2026-11-19)
+
+
+### Features
+
+* Branchy foundation + branch-switcher vertical slice ([bd7ceca](https://github.com/MeHalogen/branchit/commit/bd7ceca95af79099e5a710a15dfd6d296149f532))
+* **cli:** branchit demo, non-interactive sweep/branches/pr with --json, completions, lazy TUI ([358d654](https://github.com/MeHalogen/branchit/commit/358d654cc6bba264170e405df542b6cf03549a05))
+* config system, first-run onboarding, CI, license ([7652136](https://github.com/MeHalogen/branchit/commit/765213671120e80ef31b993befa93c0f15b548f0))
+* Phase 4 — stale branch sweeper with undo ([647fed7](https://github.com/MeHalogen/branchit/commit/647fed75424168f3f472f665355b5909610764b6))
+* Phase 5 — conventional commit helper ([01f2a65](https://github.com/MeHalogen/branchit/commit/01f2a6506a2bcbaea7420b078982a04a6a716bbb))
+* Phase 6 — pre-commit checks with repository trust model ([b44579d](https://github.com/MeHalogen/branchit/commit/b44579d9fff8a2a0cbfdb31b6b8159481af598f0))
+* Phase 7 — PR readiness with push and host integration ([29b9cf4](https://github.com/MeHalogen/branchit/commit/29b9cf41290b7aaefb194806863ae146674d9b74))
+* themes, animated progress, key overrides, optional AI commit message, large-repo speedups ([17ffeef](https://github.com/MeHalogen/branchit/commit/17ffeef1f11a32afaf80a9c7d2fb3a0ee2836b0c))
+* universal undo via an operation journal, plus reflog recovery ([f081ffd](https://github.com/MeHalogen/branchit/commit/f081ffd24b4fea179c9459d5aa5d96784e869956))
+* working tree + diff viewer, global search, sync, stash manager ([41593a8](https://github.com/MeHalogen/branchit/commit/41593a85f7e1da20d9fcc56c8e673ec19c1066bf))
+* worktree manager, open-here shell integration, worktree-aware sweep ([39ff758](https://github.com/MeHalogen/branchit/commit/39ff758cbdab86eb620454b60ff124568b9445c5))
+
+
+### Bug Fixes
+
+* **journal:** never journal a stash the operation did not create ([3e474e9](https://github.com/MeHalogen/branchit/commit/3e474e9299c69524800e9c38bda732eb365084ed))
+* keep Windows paths intact in quoted configured commands ([79c11bc](https://github.com/MeHalogen/branchit/commit/79c11bc71561f9cffb7ca0f96f5cfb2581822c66))
+* **pkg:** bin path without ./ so npm 11 keeps the branchit command ([39c9a7b](https://github.com/MeHalogen/branchit/commit/39c9a7bb9692442802a8f0ce664c28dbf9366be2))
+* **pkg:** keep the branchit bin when publishing with npm 11 ([bc9af02](https://github.com/MeHalogen/branchit/commit/bc9af025b2e4ba9b1c7ce280811e4444c23b4560))
+* Windows paths in quoted configured commands; Windows perf headroom ([c1ed703](https://github.com/MeHalogen/branchit/commit/c1ed7035170d1fcad385dcf82b360da1b30cf93d))
+* Windows-safe URL opening and test fixture paths ([b5ec41b](https://github.com/MeHalogen/branchit/commit/b5ec41b46ce5ce887bc6970796df78a8dc07b84a))
+* **worktrees:** use Git's forward-slash paths on Windows ([71587ef](https://github.com/MeHalogen/branchit/commit/71587ef73aa961dc5f24dea1689eb62aae05e2d1))
+
 ## 0.6.0 — Polish
 
 ### Added
